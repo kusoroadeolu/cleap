@@ -14,7 +14,7 @@ class HeapTest {
     void insertOnEmpty_headShouldEqualValue(String value){
         heap = switch (value) {
             case "ub" -> new UnboundedLinkedHeap<>();
-            case "b" -> new BoundedSequentialHeap<>(3);
+            case "b" -> new BoundedArrayHeap<>(3);
             default -> throw new IllegalArgumentException();
         };
 
@@ -28,7 +28,7 @@ class HeapTest {
     void onInsert_greaterValues_shouldSiftUp(String value){
         heap = switch (value) {
             case "ub" -> new UnboundedLinkedHeap<>();
-            case "b" -> new BoundedSequentialHeap<>(3);
+            case "b" -> new BoundedArrayHeap<>(3);
             default -> throw new IllegalArgumentException();
         };
 
@@ -43,7 +43,7 @@ class HeapTest {
     void onExtractMax_shouldSiftUpGreaterChild(String value){
         heap = switch (value) {
             case "ub" -> new UnboundedLinkedHeap<>();
-            case "b" -> new BoundedSequentialHeap<>(3);
+            case "b" -> new BoundedArrayHeap<>(3);
             default -> throw new IllegalArgumentException();
         };
 
@@ -60,7 +60,7 @@ class HeapTest {
     void onExtractMax_shouldReturnNull_ifEmpty(String value){
         heap = switch (value) {
             case "ub" -> new UnboundedLinkedHeap<>();
-            case "b" -> new BoundedSequentialHeap<>(3);
+            case "b" -> new BoundedArrayHeap<>(3);
             default -> throw new IllegalArgumentException();
         };
 
@@ -73,7 +73,7 @@ class HeapTest {
     void sizeShouldReturnZeroIfEmpty(String value){
         heap = switch (value) {
             case "ub" -> new UnboundedLinkedHeap<>();
-            case "b" -> new BoundedSequentialHeap<>(3);
+            case "b" -> new BoundedArrayHeap<>(3);
             default -> throw new IllegalArgumentException();
         };
 

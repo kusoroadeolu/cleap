@@ -9,13 +9,13 @@ import java.util.Arrays;
 *   insert: adding a new key to the heap (a.k.a., push[4])
 *   extract-max : returns the node of maximum value from a max heap after removing it from the heap (a.k.a., pop[5])
 * */
-public class BoundedSequentialHeap<T extends Comparable<T>> implements Heap<T> {
+public class BoundedArrayHeap<T extends Comparable<T>> implements Heap<T> {
     private final Object[] tree;
     private final int capacity;
     private int size;
 
     //Array size should always be 2 ^ n - 1
-    public BoundedSequentialHeap(int initialCap) {
+    public BoundedArrayHeap(int initialCap) {
         int pow2 = 1 << (32 - Integer.numberOfLeadingZeros(initialCap - 1));
         tree = new Object[capacity = (pow2 - 1)];
     }
@@ -39,7 +39,6 @@ public class BoundedSequentialHeap<T extends Comparable<T>> implements Heap<T> {
     * Rather than looping through, we could just insert at the size, then sift up
     *
     * */
-    @SuppressWarnings("unchecked")
     @Override
     public boolean insert(T t) {
         if (size - 1 == capacity) return false;
