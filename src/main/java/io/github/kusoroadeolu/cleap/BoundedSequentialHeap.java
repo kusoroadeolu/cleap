@@ -60,7 +60,7 @@ public class BoundedSequentialHeap<T extends Comparable<T>> implements Heap<T> {
             } //Sift up
         }
 
-        return false;
+        return true;
     }
 
     @SuppressWarnings("unchecked")

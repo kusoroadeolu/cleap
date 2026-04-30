@@ -125,30 +125,24 @@ public class UnboundedLinkedHeap<T extends Comparable<T>> implements Heap<T> {
 
     @Override
     public T head() {
-        Node<T> max = head;
-        if (max == null)  return null;
-        T val = max.value;
-        if (val == null) return null;
+        if (head == null) return null;
+        T val = head.value;
+        head = mergeNodes(head.left, head.right);
         --size;
+        return val;
+    }
 
-        if (max.maxNext() == null) {
-            head = null;
-            return val;
+    private Node<T> mergeNodes(Node<T> a, Node<T> b) {
+        if (a == null) return b;
+        if (b == null) return a;
+
+        if (a.compareTo(b) >= 0) {
+            a.right = mergeNodes(a.right, b);
+            return a;
+        } else {
+            b.right = mergeNodes(b.right, a);
+            return b;
         }
-
-        T lval;
-        while (true) {
-            Node<T> curr = max.maxNext();
-            if (curr == null) return val;
-            else {
-                lval = curr.value;
-                max.setValue(lval);
-                curr.setValue(null);
-            }
-
-            max = curr;
-        }
-
     }
 
     @Override
