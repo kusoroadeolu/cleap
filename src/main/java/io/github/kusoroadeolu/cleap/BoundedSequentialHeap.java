@@ -2,14 +2,14 @@ package io.github.kusoroadeolu.cleap;
 
 import java.util.Arrays;
 
-// A bounded max heap.
+// A bounded non thread safe max heap.
 /*
 * This heap has the following methods:
 *   find-max  find a maximum item of a max-heap, respectively (a.k.a. peek)
 *   insert: adding a new key to the heap (a.k.a., push[4])
 *   extract-max : returns the node of maximum value from a max heap after removing it from the heap (a.k.a., pop[5])
 * */
-public class BoundedSequentialHeap<T extends Comparable<T>> implements Heap<T>{
+public class BoundedSequentialHeap<T extends Comparable<T>> implements Heap<T> {
     private final Object[] tree;
     private final int capacity;
     private int size;
@@ -43,20 +43,20 @@ public class BoundedSequentialHeap<T extends Comparable<T>> implements Heap<T>{
     @Override
     public boolean insert(T t) {
         if (size - 1 == capacity) return false;
-        int currIdx = size++;
-        tree[currIdx] = t;
-        int pIdx = (currIdx - 1) / 2;
+        int childIdx = size++;
+        tree[childIdx] = t;
+        int pIdx = parentIndex(childIdx);
         T parent;
 
         //Swim up
         while (pIdx > -1) {
-            parent = (T) tree[pIdx];
+            parent = valueAt(pIdx);
             if (t.compareTo(parent) <= 0) return true;
             else {
                 tree[pIdx] = t;
-                tree[currIdx] = parent;
-                currIdx = pIdx;
-                pIdx =  (currIdx - 1) / 2;
+                tree[childIdx] = parent;
+                childIdx = pIdx;
+                pIdx = parentIndex(childIdx);
             } //Sift up
         }
 
@@ -65,15 +65,17 @@ public class BoundedSequentialHeap<T extends Comparable<T>> implements Heap<T>{
 
     @SuppressWarnings("unchecked")
     @Override
-    public T findMax(){
+    public T peek(){
         return (T) tree[0];
     }
 
     @SuppressWarnings("unchecked")
     @Override
-    public T extractMax(){
+    public T head(){
         int pIdx = 0;
         var val = (T) tree[pIdx]; //Null the tree head
+        if (val != null) --size;
+
         tree[pIdx] = null;
 
         int cIdx1 = childIndex(pIdx, 1);
@@ -81,8 +83,8 @@ public class BoundedSequentialHeap<T extends Comparable<T>> implements Heap<T>{
 
         //Sift down
         while (cIdx1 <= size) {
-            T child1 = (T) tree[cIdx1];
-            T child2 = (T) tree[cIdx2];
+            T child1 = valueAt(cIdx1);
+            T child2 = valueAt(cIdx2);
             if (child2 == null || child1.compareTo(child2) >= 1) {
                 tree[pIdx] = child1;
                 tree[cIdx1] = null;
@@ -100,9 +102,18 @@ public class BoundedSequentialHeap<T extends Comparable<T>> implements Heap<T>{
         return val;
     }
 
+    @SuppressWarnings("unchecked")
+    T valueAt (int idx) {
+        return (T) tree[idx];
+    }
+
 
     private int childIndex(int parentIdx, int by) {
         return parentIdx * 2 + by;
+    }
+
+    private int parentIndex(int childIdx) {
+        return (childIdx - 1 ) / 2;
     }
 
     @Override
@@ -110,19 +121,14 @@ public class BoundedSequentialHeap<T extends Comparable<T>> implements Heap<T>{
         return Arrays.toString(tree);
     }
 
-    static void main() {
-        BoundedSequentialHeap<Integer> heap = new BoundedSequentialHeap<>(8);
-        heap.insert(30);
-        heap.insert(50);
-        heap.insert(100);
-        heap.insert(70);
-        heap.insert(200);
-        heap.insert(300);
-        IO.println(heap);
-        heap.extractMax();
-        IO.println(heap);
-        heap.extractMax();
-        IO.println(heap);
+
+    @Override
+    public int size() {
+        return size;
     }
 
+    @Override
+    public int capacity() {
+        return capacity;
+    }
 }

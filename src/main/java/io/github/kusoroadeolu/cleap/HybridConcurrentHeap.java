@@ -7,13 +7,23 @@ public class HybridConcurrentHeap<T extends Comparable<T>> implements Heap<T> {
     }
 
     @Override
-    public T findMax() {
+    public T peek() {
         return null;
     }
 
     @Override
-    public T extractMax() {
+    public T head() {
         return null;
+    }
+
+    @Override
+    public int size() {
+        return 0;
+    }
+
+    @Override
+    public int capacity() {
+        return 0;
     }
 }
 
