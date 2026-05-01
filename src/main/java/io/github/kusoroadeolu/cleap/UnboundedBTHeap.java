@@ -6,10 +6,10 @@ package io.github.kusoroadeolu.cleap;
 import java.util.Objects;
 
 /*
-* A single pointer heap, which simulates a unidirectional - 2 pointer (left - right) linked list
+* A binary tree based heap
 *
 * */
-public class UnboundedLinkedHeap<T extends Comparable<T>> implements Heap<T> {
+public class UnboundedBTHeap<T extends Comparable<T>> implements Heap<T> {
 
     private Node<T> head; //Starts as null
     private int size;
@@ -21,10 +21,6 @@ public class UnboundedLinkedHeap<T extends Comparable<T>> implements Heap<T> {
 
         public Node(T value) {
             this.value = Objects.requireNonNull(value);
-        }
-
-        public void setValue(T value) {
-            this.value = value;
         }
 
         public void setLeft(Node<T> left) {
@@ -98,6 +94,7 @@ public class UnboundedLinkedHeap<T extends Comparable<T>> implements Heap<T> {
                 else prev.setRight(node);
                 return true;
             } else if (node.compareTo(next) > 0) {
+
                 node.setLeft(next);
                 if (prev == null) head = node;
                 else {
@@ -108,7 +105,6 @@ public class UnboundedLinkedHeap<T extends Comparable<T>> implements Heap<T> {
 
                 return true;
             }
-
 
             prev = next;
             next = prev.next();

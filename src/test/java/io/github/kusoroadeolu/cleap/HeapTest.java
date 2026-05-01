@@ -13,7 +13,7 @@ class HeapTest {
     @ValueSource(strings = {"ub", "b"})
     void insertOnEmpty_headShouldEqualValue(String value){
         heap = switch (value) {
-            case "ub" -> new UnboundedLinkedHeap<>();
+            case "ub" -> new UnboundedBTHeap<>();
             case "b" -> new BoundedArrayHeap<>(3);
             default -> throw new IllegalArgumentException();
         };
@@ -27,7 +27,7 @@ class HeapTest {
     @ValueSource(strings = {"ub", "b"})
     void onInsert_greaterValues_shouldSiftUp(String value){
         heap = switch (value) {
-            case "ub" -> new UnboundedLinkedHeap<>();
+            case "ub" -> new UnboundedBTHeap<>();
             case "b" -> new BoundedArrayHeap<>(3);
             default -> throw new IllegalArgumentException();
         };
@@ -42,7 +42,7 @@ class HeapTest {
     @ValueSource(strings = {"ub",  "b"})
     void onExtractMax_shouldSiftUpGreaterChild(String value){
         heap = switch (value) {
-            case "ub" -> new UnboundedLinkedHeap<>();
+            case "ub" -> new UnboundedBTHeap<>();
             case "b" -> new BoundedArrayHeap<>(3);
             default -> throw new IllegalArgumentException();
         };
@@ -59,7 +59,7 @@ class HeapTest {
     @ValueSource(strings = {"ub",  "b"})
     void onExtractMax_shouldReturnNull_ifEmpty(String value){
         heap = switch (value) {
-            case "ub" -> new UnboundedLinkedHeap<>();
+            case "ub" -> new UnboundedBTHeap<>();
             case "b" -> new BoundedArrayHeap<>(3);
             default -> throw new IllegalArgumentException();
         };
@@ -72,7 +72,7 @@ class HeapTest {
     @ValueSource(strings = {"ub",  "b"})
     void sizeShouldReturnZeroIfEmpty(String value){
         heap = switch (value) {
-            case "ub" -> new UnboundedLinkedHeap<>();
+            case "ub" -> new UnboundedBTHeap<>();
             case "b" -> new BoundedArrayHeap<>(3);
             default -> throw new IllegalArgumentException();
         };

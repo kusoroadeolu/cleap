@@ -10,14 +10,14 @@ import java.util.Arrays;
 *   extract-max : returns the node of maximum value from a max heap after removing it from the heap (a.k.a., pop[5])
 * */
 public class BoundedArrayHeap<T extends Comparable<T>> implements Heap<T> {
-    private final Object[] tree;
+    private final Object[] items;
     private final int capacity;
     private int size;
 
     //Array size should always be 2 ^ n - 1
-    public BoundedArrayHeap(int initialCap) {
-        int pow2 = 1 << (32 - Integer.numberOfLeadingZeros(initialCap - 1));
-        tree = new Object[capacity = (pow2 - 1)];
+    public BoundedArrayHeap(int capacity) {
+        int pow2 = 1 << (32 - Integer.numberOfLeadingZeros(capacity - 1));
+        items = new Object[this.capacity = (pow2 - 1)];
     }
 
     /*
@@ -43,7 +43,7 @@ public class BoundedArrayHeap<T extends Comparable<T>> implements Heap<T> {
     public boolean insert(T t) {
         if (size - 1 == capacity) return false;
         int childIdx = size++;
-        tree[childIdx] = t;
+        items[childIdx] = t;
         int pIdx = parentIndex(childIdx);
         T parent;
 
@@ -52,8 +52,8 @@ public class BoundedArrayHeap<T extends Comparable<T>> implements Heap<T> {
             parent = valueAt(pIdx);
             if (t.compareTo(parent) <= 0) return true;
             else {
-                tree[pIdx] = t;
-                tree[childIdx] = parent;
+                items[pIdx] = t;
+                items[childIdx] = parent;
                 childIdx = pIdx;
                 pIdx = parentIndex(childIdx);
             } //Sift up
@@ -65,17 +65,17 @@ public class BoundedArrayHeap<T extends Comparable<T>> implements Heap<T> {
     @SuppressWarnings("unchecked")
     @Override
     public T peek(){
-        return (T) tree[0];
+        return (T) items[0];
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public T head(){
         int pIdx = 0;
-        var val = (T) tree[pIdx]; //Null the tree head
+        var val = (T) items[pIdx]; //Null the tree head
         if (val != null) --size;
 
-        tree[pIdx] = null;
+        items[pIdx] = null;
 
         int cIdx1 = childIndex(pIdx, 1);
         int cIdx2 = childIndex(pIdx, 2);
@@ -85,12 +85,12 @@ public class BoundedArrayHeap<T extends Comparable<T>> implements Heap<T> {
             T child1 = valueAt(cIdx1);
             T child2 = valueAt(cIdx2);
             if (child2 == null || child1.compareTo(child2) >= 1) {
-                tree[pIdx] = child1;
-                tree[cIdx1] = null;
+                items[pIdx] = child1;
+                items[cIdx1] = null;
                 pIdx = cIdx1;
             } else {
-                tree[pIdx] = child2;
-                tree[cIdx2] = null;
+                items[pIdx] = child2;
+                items[cIdx2] = null;
                 pIdx = cIdx2;
             }
 
@@ -103,7 +103,7 @@ public class BoundedArrayHeap<T extends Comparable<T>> implements Heap<T> {
 
     @SuppressWarnings("unchecked")
     T valueAt (int idx) {
-        return (T) tree[idx];
+        return (T) items[idx];
     }
 
 
@@ -117,7 +117,7 @@ public class BoundedArrayHeap<T extends Comparable<T>> implements Heap<T> {
 
     @Override
     public String toString() {
-        return Arrays.toString(tree);
+        return Arrays.toString(items);
     }
 
 
