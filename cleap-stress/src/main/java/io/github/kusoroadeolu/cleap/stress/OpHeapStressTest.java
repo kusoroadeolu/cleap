@@ -2,12 +2,13 @@ package io.github.kusoroadeolu.cleap.stress;
 
 import io.github.kusoroadeolu.cleap.HOHConcurrentHeap;
 import io.github.kusoroadeolu.cleap.Heap;
+import io.github.kusoroadeolu.cleap.OptimisticConcurrentHeap;
 import org.openjdk.jcstress.annotations.*;
 import org.openjdk.jcstress.infra.results.I_Result;
 
 import java.util.concurrent.ThreadLocalRandom;
 
-public class HOHStressTest {
+public class OpHeapStressTest {
 
     @JCStressTest
     @Outcome(id = "1", expect = Expect.ACCEPTABLE, desc = "Invariant maintained")
@@ -17,7 +18,7 @@ public class HOHStressTest {
         private Heap<Integer> heap;
 
         public HeapifyInvariantTest() {
-            this.heap = new HOHConcurrentHeap<>(3);
+            this.heap = new OptimisticConcurrentHeap<>();
         }
 
         @Actor
