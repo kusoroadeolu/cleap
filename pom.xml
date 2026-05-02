@@ -11,6 +11,7 @@
     <modules>
         <module>cleap-core</module>
         <module>cleap-stress</module>
+        <module>cleap-jmh</module>
     </modules>
 
     <properties>

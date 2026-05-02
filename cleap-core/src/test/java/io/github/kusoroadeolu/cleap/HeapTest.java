@@ -11,22 +11,22 @@ class HeapTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"ub", "b", "op"})
-    void insertOnEmpty_headShouldEqualValue(String type){
+    void addOnEmpty_headShouldEqualValue(String type){
         heap = getHeap(type);
 
-        heap.insert(1);
+        heap.add(1);
         assertEquals(1, heap.peek());
     }
 
 
     @ParameterizedTest
     @ValueSource(strings = {"ub", "b", "op"})
-    void onInsert_higherPriority_shouldSiftUp(String type){
+    void onAdd_higherPriority_shouldSiftUp(String type){
         heap = getHeap(type);
 
-        heap.insert(1);
-        heap.insert(2);
-        heap.insert(3);
+        heap.add(1);
+        heap.add(2);
+        heap.add(3);
          assertEquals(3, heap.peek());
     }
 
@@ -35,9 +35,9 @@ class HeapTest {
     void onExtractMax_shouldSiftUpGreaterChild(String type){
         heap = getHeap(type);
 
-        heap.insert(1);
-        heap.insert(2);
-        heap.insert(3);
+        heap.add(1);
+        heap.add(2);
+        heap.add(3);
         heap.poll();
 
         assertEquals(2, heap.peek()); //Should be 2
@@ -63,7 +63,7 @@ class HeapTest {
        return switch (type) {
             case "ub" -> new UnboundedBTHeap<>();
             case "b" -> new BoundedArrayHeap<>(3);
-            case "op" -> new StagedConcurrentHeap<>();
+            case "op" -> new OptimisticConcurrentHeap<>();
             default -> throw new IllegalArgumentException();
         };
     }

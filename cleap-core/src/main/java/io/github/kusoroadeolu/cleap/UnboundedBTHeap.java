@@ -79,7 +79,7 @@ public class UnboundedBTHeap<T extends Comparable<T>> implements Heap<T> {
     *   else we compare next = prev.left/prev.right , then we set prev.left/prev.right -> node
     * */
     @Override
-    public boolean insert(T t) {
+    public boolean add(T t) {
         Node<T> node = new Node<>(t);
         Node<T> prev = null;
         Node<T> next = head;

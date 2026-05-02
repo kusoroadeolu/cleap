@@ -5,7 +5,7 @@ import java.util.Iterator;
 import java.util.Queue;
 
 public interface Heap<T extends Comparable<T>> extends Queue<T> {
-    boolean insert(T t);
+    boolean add(T t);
 
     T peek();
 
@@ -16,13 +16,8 @@ public interface Heap<T extends Comparable<T>> extends Queue<T> {
     int capacity();
 
     @Override
-    default boolean add(T t) {
-        return false;
-    }
-
-    @Override
     default boolean offer(T t) {
-        return false;
+        return add(t);
     }
 
     @Override
@@ -62,7 +57,7 @@ public interface Heap<T extends Comparable<T>> extends Queue<T> {
 
     @Override
     default boolean remove(Object o) {
-        throw new UnsupportedOperationException();
+        return false;
     }
 
     @Override

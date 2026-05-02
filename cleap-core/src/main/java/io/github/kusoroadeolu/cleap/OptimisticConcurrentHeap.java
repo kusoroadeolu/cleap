@@ -2,6 +2,7 @@ package io.github.kusoroadeolu.cleap;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Objects;
 import java.util.PriorityQueue;
@@ -12,7 +13,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 
 /*
-* A different implementation of the optimistic strict queue
+* A different implementation of the staged prio queue
  * Insert:
  *   Initialize a new node object with our item on construction
  *   Then repeatedly try to cas our node to the head of the stack until we succeed
@@ -40,7 +41,7 @@ import java.util.concurrent.locks.ReentrantLock;
  *
  * Peek:
  *   Hold the lock
- *    Scan the stack for the highest priority node, storing it as a local variable
+ *   Scan the stack for the highest priority node, storing it as a local variable
  *   Peek the head of the priority queue
  *   If the head of the priority queue is a lower priority than stack node return the stack value (don't mark the node as deleted)
  *   otherwise increment the value
@@ -55,14 +56,22 @@ public class OptimisticConcurrentHeap<T extends Comparable<T>> implements Heap<T
     private final AtomicInteger size;
 
     public OptimisticConcurrentHeap() {
+        this(Collections.emptyList());
+    }
+
+    public OptimisticConcurrentHeap(Collection<T> collection) {
         this.lock = new ReentrantLock();
         this.stack = new MPSCStack<>();
         this.queue = new PriorityQueue<>(Collections.reverseOrder());
         this.size = new AtomicInteger();
+        for (T t : collection) {
+            stack.casToHead(new Node<>(t));
+        }
     }
 
+    //Returns false if the element was not immediately added to the queue
     @Override
-    public boolean insert(T t) {
+    public boolean add(T t) {
         Node<T> node = new Node<>(Objects.requireNonNull(t));
         Lock l = lock;
         MPSCStack<T> s = stack;
@@ -73,12 +82,13 @@ public class OptimisticConcurrentHeap<T extends Comparable<T>> implements Heap<T
             AtomicInteger i = size;
             try {
                 insertToPQ(s, q, i);
+                return true;
             }finally {
                 l.unlock();
             }
         }
 
-        return true;
+        return false;
     }
 
 
@@ -137,7 +147,7 @@ public class OptimisticConcurrentHeap<T extends Comparable<T>> implements Heap<T
         for (Node<T> curr = stack.loHead(); curr != null; curr = curr.loNext()) {
             if (curr.isDead()) continue; //Skip dead nodes
             T val = curr.value;
-            if (highest == null || val.compareTo(highest.value) > 0 ) highest = curr;
+            if (highest == null || val.compareTo(highest.value) > 0) highest = curr;
         }
 
         return highest;
@@ -149,13 +159,16 @@ public class OptimisticConcurrentHeap<T extends Comparable<T>> implements Heap<T
         Node<T> next;
         int count = 0;
         while (n != null) {
-            if (n.isDead()) continue;
-            q.add(n.value);
-            ++count;
+            if (!n.isDead()) {
+                q.add(n.value);
+                ++count;
+            }
+
             next = n.loNext();
             n.spNext(n); //Set next to our selves, a plain write is alright here as this stack is essentially detached
             n = next;
         }
+
         i.addAndGet(count);
     }
 
@@ -185,10 +198,6 @@ public class OptimisticConcurrentHeap<T extends Comparable<T>> implements Heap<T
             return state == DEAD;
         }
 
-        public int compare(Node<T> node) {
-            return value.compareTo(node.value);
-        }
-
         public Node<T> loNext() {
             return (Node<T>) NEXT.getAcquire(this);
         }
@@ -196,6 +205,15 @@ public class OptimisticConcurrentHeap<T extends Comparable<T>> implements Heap<T
         //Backed by volatile write
         void spNext(Node<T> next) {
             NEXT.set(this, next);
+        }
+
+        @Override
+        public String toString() {
+            return "Node[" +
+                    "next=" + next +
+                    ", value=" + value +
+                    ", state=" + state +
+                    ']';
         }
     }
 
@@ -208,14 +226,14 @@ public class OptimisticConcurrentHeap<T extends Comparable<T>> implements Heap<T
             do {
                 lhead = loHead();
                 node.spNext(lhead);
-            }while (!HEAD.compareAndSet(this, lhead, node)); //Volatile writes contain a release fence so next is always visible
+            } while (!HEAD.compareAndSet(this, lhead, node)); //Volatile writes contain a release fence so next is always visible
         }
 
 
         //Returns the previous head, a set release, happens before the get acquire, so the ordered load from head should be viisible
         @SuppressWarnings("unchecked")
         Node<T> detachHead(){
-            return (Node<T>) HEAD.getAndSetRelease(this, null);
+            return (Node<T>) HEAD.getAndSet(this, null);
         }
 
         @SuppressWarnings("unchecked")

@@ -40,7 +40,7 @@ public class BoundedArrayHeap<T extends Comparable<T>> implements Heap<T> {
     *
     * */
     @Override
-    public boolean insert(T t) {
+    public boolean add(T t) {
         if (size - 1 == capacity) return false;
         int childIdx = size++;
         items[childIdx] = t;

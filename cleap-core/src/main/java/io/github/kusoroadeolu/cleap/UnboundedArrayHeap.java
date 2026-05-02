@@ -15,7 +15,7 @@ public class UnboundedArrayHeap<T extends Comparable<T>> implements Heap<T>{
     }
 
     @Override
-    public boolean insert(T t) {
+    public boolean add(T t) {
         if (size - 1 == capacity) grow();
         int childIdx = size++;
         tree[childIdx] = t;

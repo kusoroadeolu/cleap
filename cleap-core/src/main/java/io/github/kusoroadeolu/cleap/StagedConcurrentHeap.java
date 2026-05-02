@@ -62,7 +62,7 @@ public class StagedConcurrentHeap<T extends Comparable<T>> implements Heap<T>{
     }
 
     @Override
-    public boolean insert(T t) {
+    public boolean add(T t) {
         Node<T> node = new Node<>(Objects.requireNonNull(t));
         Lock l = lock;
         MPSCStack<T> s = stack;
@@ -78,7 +78,7 @@ public class StagedConcurrentHeap<T extends Comparable<T>> implements Heap<T>{
             }
         }
 
-        return true;
+        return false;
     }
 
 
@@ -146,10 +146,6 @@ public class StagedConcurrentHeap<T extends Comparable<T>> implements Heap<T>{
             this.value = value;
         }
 
-        public int compare(Node<T> node) {
-            return value.compareTo(node.value);
-        }
-
         public Node<T> loNext() {
             return (Node<T>) NEXT.getAcquire(this);
         }
@@ -173,10 +169,10 @@ public class StagedConcurrentHeap<T extends Comparable<T>> implements Heap<T>{
         }
 
 
-        //Returns the previous head, a set release, happens before the get acquire, so the ordered load from head should be viisible
+        //Returns the previous head, a volatile read and write. release ensures null write is visible immediately, acquire read ensures we always see each node's next pointer
         @SuppressWarnings("unchecked")
         Node<T> detachHead(){
-            return (Node<T>) HEAD.getAndSetRelease(this, null);
+            return (Node<T>) HEAD.getAndSet(this, null);
         }
 
         @SuppressWarnings("unchecked")
