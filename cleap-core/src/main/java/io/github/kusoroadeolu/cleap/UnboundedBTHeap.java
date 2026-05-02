@@ -120,7 +120,7 @@ public class UnboundedBTHeap<T extends Comparable<T>> implements Heap<T> {
     }
 
     @Override
-    public T head() {
+    public T poll() {
         if (head == null) return null;
         T val = head.value;
         head = mergeNodes(head.left, head.right);

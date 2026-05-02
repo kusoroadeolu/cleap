@@ -70,7 +70,7 @@ public class BoundedArrayHeap<T extends Comparable<T>> implements Heap<T> {
 
     @SuppressWarnings("unchecked")
     @Override
-    public T head(){
+    public T poll(){
         int pIdx = 0;
         var val = (T) items[pIdx]; //Null the tree head
         if (val != null) --size;
