@@ -1,5 +1,6 @@
 package io.github.kusoroadeolu.cleap;
 
+
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.Collections;
@@ -9,52 +10,51 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-
-
 /*
-* A different implementation of the optimistic strict queue
- * Insert:
- *   Initialize a new node object with our item on construction
- *   Then repeatedly try to cas our node to the head of the stack until we succeed
- *   Then try to acquire the lock, if we fail, return our result as true (since this heap is unbounded)
- *   Otherwise
- *       Detach the stack from its head using an atomic getSet instruction, setting the current head as null
- *       Store a count variable
- *       Repeatedly
- *           If the node is null
- *           Insert each value from each node in stack in the heap, if the node is marked as deleted, skip it -> Linearizability point, when the value is now part of the priority queue
- *           Once a node has been inserted, move to the next before linking the previous node to itself until we reach null
- *           Increment count
- *       Batch add count to size
- *   Release the lock and return true
- *
- * Here we could try to help the insert path as well by inserting nodes from the stack
- *  Head (Poll):
- *   Hold the lock
- *   Load(Don't detach) the head of the stack, scan through the stack sequentially to find the highest priority node in the stack
- *   Peek the head of the priority queue
- *   If the head has a higher priority than the node's item, poll the head and heapify the queue and decrement the size
- *   Else mark the node as deleted with a plain write and don't heapify the queue (don't decrement the size)
- *   Release the lock
- *   Return the highest priority value
- *
- * Peek:
- *   Hold the lock
- *    Scan the stack for the highest priority node, storing it as a local variable
- *   Peek the head of the priority queue
- *   If the head of the priority queue is a lower priority than stack node return the stack value (don't mark the node as deleted)
- *   otherwise increment the value
- *
- *
- * Polls and peeks are allowed to lag behind
- * */
-public class OptimisticConcurrentHeap<T extends Comparable<T>> implements Heap<T> {
+* An unbounded optimistic concurrent MAX heap.
+* Peek, Head(Poll) and insert operations in this list are protected through mutual exclusion.
+*
+* A dual data structure approach is used for this, a MPSC concurrent stack and a sequential(non thread safe) priority queue/heap (could be array or node based). We also keep an atomic integer field for incrementing the size to avoid a size lock
+* Each node in MPSC stack contains a value to be inserted to the priority queue and a next node pointer
+* If a node is alive it should be added to the priority queue otherwise it should not
+*
+* We have two options here, increment the size at the queue CAS site or increment the size when applying. Either implies the linearizability point of this queue
+* Insert:
+*   Initialize a new node object with our item on construction
+*   Then repeatedly try to cas our node to the head of the stack until we succeed
+*   Then try to acquire the lock, if we fail, return our result as true (since this heap is unbounded)
+*   Otherwise
+*       Detach the stack from its head using an atomic getSet instruction, setting the current head as null
+*       Store a count variable
+*       Repeatedly
+*           If the node is null
+*           Insert each value from each node in stack in the heap -> Linearizability point, when the value is now part of the priority queue
+*           Once a node has been inserted, move to the next before linking the previous node to itself until we reach null
+*           Increment count
+*       Batch add count to size
+*   Release the lock and return true
+*
+* Here we could try to help the insert path as well by inserting nodes from the stack
+*  Head (Poll):
+*   Hold the lock
+*   Detach the head of then stack and then insert all values from the stack into the node
+*   Poll the head of the queue
+*   Release the lock
+*   Return the value seen
+*
+* Peek:
+*   Hold the lock
+*   Peek the head of the priority queue
+*   Release the lock
+* */
+public class StagedConcurrentHeap<T extends Comparable<T>> implements Heap<T>{
+
     private final Lock lock;
     private final MPSCStack<T> stack;
     private final PriorityQueue<T> queue;
     private final AtomicInteger size;
 
-    public OptimisticConcurrentHeap() {
+    public StagedConcurrentHeap() {
         this.lock = new ReentrantLock();
         this.stack = new MPSCStack<>();
         this.queue = new PriorityQueue<>(Collections.reverseOrder());
@@ -82,21 +82,13 @@ public class OptimisticConcurrentHeap<T extends Comparable<T>> implements Heap<T
     }
 
 
-    //Stale peeks aren't allowed here, though peeks can lag behind
+    //Stale peeks are allowed as a relaxed invariant. However I could stricten the invariants
     @Override
     public T peek() {
         Lock l = lock;
-        MPSCStack<T> s = stack;
         try {
             l.lock();
-            PriorityQueue<T> q = queue;
-            Node<T> hpNode = findHighestPriorityNode(s);
-            T val = q.peek();
-            if (hpNode == null) return val;
-            if (val == null) return hpNode.value;
-            if (hpNode.value.compareTo(val) > 0) return hpNode.value;
-            return val;
-
+            return queue.peek();
         }finally {
             l.unlock();
         }
@@ -108,39 +100,16 @@ public class OptimisticConcurrentHeap<T extends Comparable<T>> implements Heap<T
         MPSCStack<T> s = stack;
         try {
             l.lock();
+            AtomicInteger i = size;
             PriorityQueue<T> q = queue;
-            Node<T> hpNode = findHighestPriorityNode(s);
-            T val = q.peek();
-
-            if (hpNode == null) {
-                q.poll(); //Remove the head
-                if (val != null) size.decrementAndGet();
-                return val;
-            }
-
-            if (val == null || hpNode.value.compareTo(val) > 0) {
-                hpNode.state = Node.DEAD; //Mark as dead
-                return hpNode.value;
-            }
-
-            q.poll();
-            size.decrementAndGet();
+            insertToPQ(s, q, i);
+            T val = q.poll();
+            if (val != null) i.decrementAndGet();
             return val;
         }finally {
             l.unlock();
         }
 
-    }
-
-    private Node<T> findHighestPriorityNode(MPSCStack<T> stack) {
-        Node<T> highest = null;
-        for (Node<T> curr = stack.loHead(); curr != null; curr = curr.loNext()) {
-            if (curr.isDead()) continue; //Skip dead nodes
-            T val = curr.value;
-            if (highest == null || val.compareTo(highest.value) > 0 ) highest = curr;
-        }
-
-        return highest;
     }
 
     //Only inserted by lock holders
@@ -149,11 +118,10 @@ public class OptimisticConcurrentHeap<T extends Comparable<T>> implements Heap<T
         Node<T> next;
         int count = 0;
         while (n != null) {
-            if (n.isDead()) continue;
             q.add(n.value);
             ++count;
             next = n.loNext();
-            n.spNext(n); //Set next to our selves, a plain write is alright here as this stack is essentially detached
+            n.spNext(n); //Set next to our selves, a plain write is alright here
             n = next;
         }
         i.addAndGet(count);
@@ -173,16 +141,9 @@ public class OptimisticConcurrentHeap<T extends Comparable<T>> implements Heap<T
     static class Node<T extends Comparable<T>> {
         volatile Node<T> next;
         final T value;
-        int state = ALIVE; //Plain write will always be backed by a lock
-        static final int ALIVE = 1;
-        static final int DEAD = 0;
 
         public Node(T value) {
             this.value = value;
-        }
-
-        public boolean isDead(){
-            return state == DEAD;
         }
 
         public int compare(Node<T> node) {
@@ -222,7 +183,6 @@ public class OptimisticConcurrentHeap<T extends Comparable<T>> implements Heap<T
         Node<T> loHead() {
             return (Node<T>) HEAD.getAcquire(this);
         }
-
     }
 
 

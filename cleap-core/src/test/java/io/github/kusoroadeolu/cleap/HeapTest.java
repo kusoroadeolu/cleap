@@ -27,8 +27,7 @@ class HeapTest {
         heap.insert(1);
         heap.insert(2);
         heap.insert(3);
-        if (type.equals("op")) assertEquals(1, heap.peek());
-        else assertEquals(3, heap.peek());
+         assertEquals(3, heap.peek());
     }
 
     @ParameterizedTest
@@ -64,7 +63,7 @@ class HeapTest {
        return switch (type) {
             case "ub" -> new UnboundedBTHeap<>();
             case "b" -> new BoundedArrayHeap<>(3);
-            case "op" -> new OptimisticConcurrentHeap<>();
+            case "op" -> new StagedConcurrentHeap<>();
             default -> throw new IllegalArgumentException();
         };
     }
