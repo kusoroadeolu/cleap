@@ -82,6 +82,8 @@ public class OptimisticConcurrentHeap<T extends Comparable<T>> implements Heap<T
         return true;
     }
 
+
+    //Stale peeks are allowed as a relaxed invariant. However I could stricten the invariants
     @Override
     public T peek() {
         Lock l = lock;

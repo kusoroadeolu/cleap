@@ -1,6 +1,5 @@
 package io.github.kusoroadeolu.cleap.stress;
 
-import io.github.kusoroadeolu.cleap.HOHConcurrentHeap;
 import io.github.kusoroadeolu.cleap.Heap;
 import io.github.kusoroadeolu.cleap.OptimisticConcurrentHeap;
 import org.openjdk.jcstress.annotations.*;
