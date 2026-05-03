@@ -11,42 +11,42 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 /*
-* An unbounded optimistic concurrent MAX heap.
-* Peek, Head(Poll) and insert operations in this list are protected through mutual exclusion.
-*
-* A dual data structure approach is used for this, a MPSC concurrent stack and a sequential(non thread safe) priority queue/heap (could be array or node based). We also keep an atomic integer field for incrementing the size to avoid a size lock
-* Each node in MPSC stack contains a value to be inserted to the priority queue and a next node pointer
-* If a node is alive it should be added to the priority queue otherwise it should not
-*
-* We have two options here, increment the size at the queue CAS site or increment the size when applying. Either implies the linearizability point of this queue
-* Insert:
-*   Initialize a new node object with our item on construction
-*   Then repeatedly try to cas our node to the head of the stack until we succeed
-*   Then try to acquire the lock, if we fail, return our result as true (since this heap is unbounded)
-*   Otherwise
-*       Detach the stack from its head using an atomic getSet instruction, setting the current head as null
-*       Store a count variable
-*       Repeatedly
-*           If the node is null
-*           Insert each value from each node in stack in the heap -> Linearizability point, when the value is now part of the priority queue
-*           Once a node has been inserted, move to the next before linking the previous node to itself until we reach null
-*           Increment count
-*       Batch add count to size
-*   Release the lock and return true
-*
-* Here we could try to help the insert path as well by inserting nodes from the stack
-*  Head (Poll):
-*   Hold the lock
-*   Detach the head of then stack and then insert all values from the stack into the node
-*   Poll the head of the queue
-*   Release the lock
-*   Return the value seen
-*
-* Peek:
-*   Hold the lock
-*   Peek the head of the priority queue
-*   Release the lock
-* */
+ * An unbounded optimistic concurrent MAX heap.
+ * Peek, Head(Poll) and insert operations in this list are protected through mutual exclusion.
+ *
+ * A dual data structure approach is used for this, a MPSC concurrent stack and a sequential(non thread safe) priority queue/heap (could be array or node based). We also keep an atomic integer field for incrementing the size to avoid a size lock
+ * Each node in MPSC stack contains a value to be inserted to the priority queue and a next node pointer
+ * If a node is alive it should be added to the priority queue otherwise it should not
+ *
+ * We have two options here, increment the size at the queue CAS site or increment the size when applying. Either implies the linearizability point of this queue
+ * Insert:
+ *   Initialize a new node object with our item on construction
+ *   Then repeatedly try to cas our node to the head of the stack until we succeed
+ *   Then try to acquire the lock, if we fail, return our result as true (since this heap is unbounded)
+ *   Otherwise
+ *       Detach the stack from its head using an atomic getSet instruction, setting the current head as null
+ *       Store a count variable
+ *       Repeatedly
+ *           If the node is null
+ *           Insert each value from each node in stack in the heap -> Linearizability point, when the value is now part of the priority queue
+ *           Once a node has been inserted, move to the next before linking the previous node to itself until we reach null
+ *           Increment count
+ *       Batch add count to size
+ *   Release the lock and return true
+ *
+ * Here we could try to help the insert path as well by inserting nodes from the stack
+ *  Head (Poll):
+ *   Hold the lock
+ *   Detach the head of then stack and then insert all values from the stack into the node
+ *   Poll the head of the queue
+ *   Release the lock
+ *   Return the value seen
+ *
+ * Peek:
+ *   Hold the lock
+ *   Peek the head of the priority queue
+ *   Release the lock
+ * */
 public class StagedConcurrentHeap<T extends Comparable<T>> implements Heap<T>{
 
     private final Lock lock;

@@ -16,31 +16,32 @@ import java.util.concurrent.TimeUnit;
 @Warmup(iterations = 10, time = 1)
 @Measurement(iterations = 10, time = 1)
 @Fork(3)
-
-/*
-Benchmark                        (type)   Mode  Cnt  Score   Error   Units
-PriorityQueueBench.eightThreads     JDK  thrpt   30  7.723 ± 1.190  ops/us
-PriorityQueueBench.eightThreads     OPT  thrpt   30  5.217 ± 0.090  ops/us
-PriorityQueueBench.eightThreads     STA  thrpt   30  4.886 ± 0.075  ops/us
-PriorityQueueBench.fourThreads      JDK  thrpt   30  8.411 ± 1.023  ops/us
-PriorityQueueBench.fourThreads      OPT  thrpt   30  5.494 ± 0.151  ops/us
-PriorityQueueBench.fourThreads      STA  thrpt   30  5.097 ± 0.127  ops/us
-PriorityQueueBench.twoThreads       JDK  thrpt   30  7.627 ± 0.939  ops/us
-PriorityQueueBench.twoThreads       OPT  thrpt   30  5.802 ± 0.040  ops/us
-PriorityQueueBench.twoThreads       STA  thrpt   30  5.290 ± 0.120  ops/us
-* Initial benchmarks. We aren't too far off from the J
-*
-* * */
-
-public class PriorityQueueBench {
+public class InsertWorkloadBench {
     private Queue<Integer> queue;
 
+
+    /*
+    * STA uses the previous insert logic of "trying to acquire the lock" after CAS to head
+    * OPT uses the new insert logic of embedding state into the node and only acquiring the lock if the node's next pointer == null
+    * Benchmark                         (type)   Mode  Cnt  Score   Error   Units
+        InsertWorkloadBench.eightThreads     JDK  thrpt   30  4.242 ± 1.476  ops/us
+        InsertWorkloadBench.eightThreads     OPT  thrpt   30  4.096 ± 1.297  ops/us
+        InsertWorkloadBench.eightThreads     STA  thrpt   30  3.803 ± 0.944  ops/us
+        InsertWorkloadBench.fourThreads      JDK  thrpt   30  4.516 ± 1.245  ops/us
+        InsertWorkloadBench.fourThreads      OPT  thrpt   30  4.238 ± 1.151  ops/us
+        InsertWorkloadBench.fourThreads      STA  thrpt   30  2.983 ± 0.750  ops/us
+        InsertWorkloadBench.twoThreads       JDK  thrpt   30  3.410 ± 0.692  ops/us
+        InsertWorkloadBench.twoThreads       OPT  thrpt   30  3.380 ± 0.847  ops/us
+        InsertWorkloadBench.twoThreads       STA  thrpt   30  3.349 ± 0.928  ops/us
+        Here we can see that the null -> acquire lock actually has better thrpt across all thread counts
+    * */
     @Param({"JDK", "OPT", "STA"}) //JDK, Optimistic, Staged
     private String type;
 
     @State(Scope.Thread)
     public static class ThreadState {
         boolean insert = true;
+        int count = 0;
     }
 
     @Setup
@@ -88,7 +89,10 @@ public class PriorityQueueBench {
 
     private void doWork(Blackhole bh, ThreadState ts) {
         boolean isInsert = ts.insert;
-        ts.insert = !isInsert;
+        if (++ts.count == 100) { //Every 100 iterations poll
+            isInsert = !isInsert;
+            ts.count = 0;
+        }
         bh.consume(isInsert
                 ? queue.offer(ThreadLocalRandom.current().nextInt(10_000))
                 : queue.poll());

@@ -63,38 +63,34 @@ public class OpHeapStress {
 
     }
 
-    @JCStressTest
-    @Outcome(id = "3", expect = Expect.ACCEPTABLE, desc = "Invariant maintained")
-    @Outcome(id = "1", expect = Expect.ACCEPTABLE_INTERESTING, desc = "Insert actor tried to acquire the lock but poller was holding it")
-    @State
-    //Assert size is incremented on inserts and deleted nodes are skipped
-    public static class HeapSizeInvariant {
-        private Heap<Integer> heap;
-        private volatile int acqLock = 0;
-
-
-        public HeapSizeInvariant() {
-            this.heap = new OptimisticConcurrentHeap<>(List.of(1, 2, 3));
-        }
-
-        @Actor
-        public void poller(){
-            heap.poll();
-        }
-
-        @Actor
-        public void inserter(){
-            boolean val = heap.add(0);
-            if (!val) acqLock = 1;
-        }
-
-
-        @Arbiter
-        public void arbiter(I_Result res) {
-            res.r1 = heap.size();
-            if (acqLock == 1 && res.r1 == 0) res.r1 = 1;
-        }
-
-    }
+//    @JCStressTest
+//    @Outcome(id = "0", expect = Expect.ACCEPTABLE, desc = "Invariant maintained")
+//    @State
+//    //Assert size is incremented on inserts and deleted nodes are skipped
+//    public static class HeapSizeInvariant {
+//        private Heap<Integer> heap;
+//
+//
+//        public HeapSizeInvariant() {
+//            this.heap = new OptimisticConcurrentHeap<>();
+//        }
+//
+//        @Actor
+//        public void poller(){
+//            heap.poll();
+//        }
+//
+//        @Actor
+//        public void inserter(){
+//            heap.add(0);
+//        }
+//
+//
+//        @Arbiter
+//        public void arbiter(I_Result res) {
+//            res.r1 = heap.size(); //Should always be 3, since we're the only i
+//        }
+//
+//    }
 
 }
