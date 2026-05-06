@@ -11,4 +11,13 @@
 
     <artifactId>cleap-core</artifactId>
 
+    <dependencies>
+        <dependency>
+            <groupId>org.jetbrains.lincheck</groupId>
+            <artifactId>lincheck</artifactId>
+            <version>3.5</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
 </project>
