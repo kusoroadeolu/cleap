@@ -1,16 +1,22 @@
 package io.github.kusoroadeolu.cleap.jmh;
 
 import io.github.kusoroadeolu.cleap.OptimisticConcurrentHeap;
+import io.github.kusoroadeolu.cleap.PIPQ;
 import io.github.kusoroadeolu.cleap.StagedConcurrentHeap;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
+import org.openjdk.jmh.profile.JavaFlightRecorderProfiler;
+import org.openjdk.jmh.runner.RunnerException;
+import org.openjdk.jmh.runner.options.Options;
+import org.openjdk.jmh.runner.options.OptionsBuilder;
 
+import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
-@BenchmarkMode(Mode.Throughput)
+@BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @State(Scope.Benchmark)
 @Warmup(iterations = 10, time = 1)
@@ -30,71 +36,49 @@ public class InsertWorkloadBench {
         InsertWorkloadBench.fourThreads      JDK  thrpt   30  4.516 ± 1.245  ops/us
         InsertWorkloadBench.fourThreads      OPT  thrpt   30  4.238 ± 1.151  ops/us
         InsertWorkloadBench.fourThreads      STA  thrpt   30  2.983 ± 0.750  ops/us
-        InsertWorkloadBench.twoThreads       JDK  thrpt   30  3.410 ± 0.692  ops/us
-        InsertWorkloadBench.twoThreads       OPT  thrpt   30  3.380 ± 0.847  ops/us
-        InsertWorkloadBench.twoThreads       STA  thrpt   30  3.349 ± 0.928  ops/us
         Here we can see that the null -> acquire lock actually has better thrpt across all thread counts
     * */
-    @Param({"JDK", "OPT", "STA"}) //JDK, Optimistic, Staged
+    @Param({"PIPQ", "JDK"}) //JDK, Optimistic
     private String type;
-
-    @State(Scope.Thread)
-    public static class ThreadState {
-        boolean insert = true;
-        int count = 0;
-    }
 
     @Setup
     public void setup() {
         queue = switch (type) {
             case "JDK" -> new PriorityBlockingQueue<>();
-            case "OPT" -> new OptimisticConcurrentHeap<>();
-            case "STA" -> new StagedConcurrentHeap<>();
-            default -> throw new IllegalArgumentException();
+            case "PIPQ" -> new PIPQ<>();
+            default -> throw new RuntimeException();
         };
-
-        for (int i = 0; i < 1000; i++) queue.offer(i);
     }
 
-    @Threads(2)
-    @Benchmark
-    public void twoThreads(Blackhole bh, ThreadState ts) {
-        doWork(bh, ts);
+    @TearDown(Level.Iteration)
+    public void after() {
+        queue.clear();
     }
+
 
     @Threads(4)
     @Benchmark
-    public void fourThreads(Blackhole bh, ThreadState ts) {
-        doWork(bh, ts);
+    public void fourThreads(Blackhole bh) {
+        doWork(bh);
     }
 
     @Threads(8)
     @Benchmark
-    public void eightThreads(Blackhole bh, ThreadState ts) {
-        doWork(bh, ts);
+    public void eightThreads(Blackhole bh) {
+        doWork(bh);
     }
 
 
-//    @Threads(16)
-//    @Benchmark
-//    public void sixteenThreads(Blackhole bh, ThreadState ts) {
-//        doWork(bh, ts);
-//    }
-//
-//    @Threads(32)
-//    @Benchmark
-//    public void thirtyTwoThreads(Blackhole bh, ThreadState ts) {
-//        doWork(bh, ts);
-//    }
+    private void doWork(Blackhole bh) {
+        bh.consume(queue.offer(ThreadLocalRandom.current().nextInt(10_000)));
+    }
 
-    private void doWork(Blackhole bh, ThreadState ts) {
-        boolean isInsert = ts.insert;
-        if (++ts.count == 100) { //Every 100 iterations poll
-            isInsert = !isInsert;
-            ts.count = 0;
-        }
-        bh.consume(isInsert
-                ? queue.offer(ThreadLocalRandom.current().nextInt(10_000))
-                : queue.poll());
+    static class BenchRunner {
+        static void main() throws RunnerException {
+            Options options = new OptionsBuilder()
+                    .include(InsertWorkloadBench.class.getSimpleName())
+                    //.addProfiler(JavaFlightRecorderProfiler.class, "dir=C:\\jfr-sl")
+                    .build();
+            new org.openjdk.jmh.runner.Runner(options).run();        }
     }
 }

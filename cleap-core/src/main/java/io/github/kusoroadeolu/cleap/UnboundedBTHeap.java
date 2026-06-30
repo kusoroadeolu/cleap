@@ -3,6 +3,8 @@ package io.github.kusoroadeolu.cleap;
 
 // An unbounded node based heap
 
+import io.github.kusoroadeolu.veneer.XMLSyntaxHighlighter;
+
 import java.util.Objects;
 
 /*

@@ -4,7 +4,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.Queue;
 
-public interface Heap<T extends Comparable<T>> extends Queue<T> {
+public interface Heap<T> extends Queue<T> {
     boolean add(T t);
 
     T peek();

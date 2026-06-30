@@ -6,6 +6,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Objects;
 import java.util.PriorityQueue;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -97,8 +98,8 @@ public class OptimisticConcurrentHeap<T extends Comparable<T>> implements Heap<T
     public T peek() {
         Lock l = lock;
         MPSCStack<T> s = stack;
+        l.lock();
         try {
-            l.lock();
             PriorityQueue<T> q = queue;
             Node<T> hpNode = findHighestPriorityNode(s);
             T val = q.peek();
@@ -106,7 +107,6 @@ public class OptimisticConcurrentHeap<T extends Comparable<T>> implements Heap<T
             if (val == null) return hpNode.value;
             if (hpNode.value.compareTo(val) > 0) return hpNode.value;
             return val;
-
         }finally {
             l.unlock();
         }
@@ -116,8 +116,8 @@ public class OptimisticConcurrentHeap<T extends Comparable<T>> implements Heap<T
     public T poll() {
         Lock l = lock;
         MPSCStack<T> s = stack;
+        l.lock();
         try {
-            l.lock();
             PriorityQueue<T> q = queue;
             Node<T> hpNode = findHighestPriorityNode(s);
             T val = q.peek();

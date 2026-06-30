@@ -2,7 +2,6 @@ package io.github.kusoroadeolu.cleap.stress;
 
 import io.github.kusoroadeolu.cleap.Heap;
 import io.github.kusoroadeolu.cleap.OptimisticConcurrentHeap;
-import io.github.kusoroadeolu.cleap.WaitFreeHeap;
 import org.openjdk.jcstress.annotations.*;
 import org.openjdk.jcstress.infra.results.I_Result;
 
@@ -60,42 +59,6 @@ public class OpHeapStress {
         @Arbiter
         public void arbiter(I_Result res) {
             res.r1 = heap.size();
-        }
-
-    }
-
-    @JCStressTest
-    @Outcome(id = "3", expect = Expect.ACCEPTABLE, desc = "Invariant maintained")
-    @State
-    //Assert size is incremented on inserts and deleted nodes are skipped
-    public static class HeapifyInvariant {
-        private Heap<Integer> heap;
-
-
-        public HeapifyInvariant() {
-            this.heap = new WaitFreeHeap<>(5);
-        }
-
-        @Actor
-        public void adder1(){
-            heap.add(1);
-        }
-
-        @Actor
-        public void adder2(){
-            heap.add(2);
-        }
-
-        @Actor
-        public void adder3(){
-            heap.add(3);
-        }
-
-
-
-        @Arbiter
-        public void arbiter(I_Result res) {
-            res.r1 = heap.peek();
         }
 
     }

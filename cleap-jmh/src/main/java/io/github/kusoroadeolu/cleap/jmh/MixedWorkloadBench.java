@@ -1,15 +1,21 @@
 package io.github.kusoroadeolu.cleap.jmh;
 
 import io.github.kusoroadeolu.cleap.OptimisticConcurrentHeap;
+import io.github.kusoroadeolu.cleap.PIPQ;
 import io.github.kusoroadeolu.cleap.StagedConcurrentHeap;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
+import org.openjdk.jmh.runner.RunnerException;
+import org.openjdk.jmh.runner.options.Options;
+import org.openjdk.jmh.runner.options.OptionsBuilder;
 
+import java.util.PriorityQueue;
 import java.util.Queue;
+import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
-@BenchmarkMode(Mode.Throughput)
+@BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @State(Scope.Benchmark)
 @Warmup(iterations = 10, time = 1)
@@ -24,9 +30,7 @@ MixedWorkloadBench.eightThreads     STA  thrpt   30  4.886 ± 0.075  ops/us
 MixedWorkloadBench.fourThreads      JDK  thrpt   30  8.411 ± 1.023  ops/us
 MixedWorkloadBench.fourThreads      OPT  thrpt   30  5.494 ± 0.151  ops/us
 MixedWorkloadBench.fourThreads      STA  thrpt   30  5.097 ± 0.127  ops/us
-MixedWorkloadBench.twoThreads       JDK  thrpt   30  7.627 ± 0.939  ops/us
-MixedWorkloadBench.twoThreads       OPT  thrpt   30  5.802 ± 0.040  ops/us
-MixedWorkloadBench.twoThreads       STA  thrpt   30  5.290 ± 0.120  ops/us
+
 * Initial benchmarks. We aren't too far off from the JDK's implementation. Right now, while I haven't profiled this, I do believe try locks add an extra layer of contention,
 since immediately after the CAS operation all threads race for the lock immediately
 * Rather than this, let's encode state into the stack itself, if we cas and our next node pointer == null, we are fit to take the lock otherwise we are not
@@ -55,10 +59,33 @@ MixedWorkloadBench.twoThreads    thrpt   30  5.650 ± 0.126  ops/us
 I'll go back to my initial implementation for now
 * * */
 
+/*
+* Benchmark                         (type)  Mode  Cnt  Score   Error  Units
+InsertWorkloadBench.eightThreads    PIPQ  avgt   30  1.050 ± 0.064  us/op
+InsertWorkloadBench.eightThreads     JDK  avgt   30  0.781 ± 0.046  us/op
+InsertWorkloadBench.fourThreads     PIPQ  avgt   30  0.412 ± 0.019  us/op
+InsertWorkloadBench.fourThreads      JDK  avgt   30  0.380 ± 0.022  us/op
+MixedWorkloadBench.eightThreads     PIPQ  avgt   30  0.833 ± 0.009  us/op
+MixedWorkloadBench.eightThreads      JDK  avgt   30  0.519 ± 0.014  us/op
+MixedWorkloadBench.fourThreads      PIPQ  avgt   30  0.332 ± 0.004  us/op
+MixedWorkloadBench.fourThreads       JDK  avgt   30  0.225 ± 0.006  us/op
+*
+*
+* Benchmark                         (type)   Mode  Cnt   Score   Error   Units
+InsertWorkloadBench.eightThreads    PIPQ  thrpt   30   7.916 ± 0.505  ops/us
+InsertWorkloadBench.eightThreads     JDK  thrpt   30  10.678 ± 0.741  ops/us
+InsertWorkloadBench.fourThreads     PIPQ  thrpt   30  10.096 ± 0.616  ops/us
+InsertWorkloadBench.fourThreads      JDK  thrpt   30  10.472 ± 0.643  ops/us
+MixedWorkloadBench.eightThreads     PIPQ  thrpt   30   9.630 ± 0.258  ops/us
+MixedWorkloadBench.eightThreads      JDK  thrpt   30  15.488 ± 0.619  ops/us
+MixedWorkloadBench.fourThreads      PIPQ  thrpt   30  12.080 ± 0.124  ops/us
+MixedWorkloadBench.fourThreads       JDK  thrpt   30  18.096 ± 0.280  ops/us
+* */
+
 public class MixedWorkloadBench {
     private Queue<Integer> queue;
 
-    //@Param({"OPT", "STA"}) //JDK, Optimistic, Staged
+    @Param({"PIPQ", "JDK"})
     private String type;
 
     @State(Scope.Thread)
@@ -68,15 +95,16 @@ public class MixedWorkloadBench {
 
     @Setup
     public void setup() {
-        queue = new OptimisticConcurrentHeap<>();
-
-        for (int i = 0; i < 1000; i++) queue.offer(i);
+        queue = switch (type) {
+            case "JDK" -> new PriorityBlockingQueue<>();
+            case "PIPQ" -> new PIPQ<>();
+            default -> throw new RuntimeException();
+        };
     }
 
-    @Threads(2)
-    @Benchmark
-    public void twoThreads(Blackhole bh, ThreadState ts) {
-        doWork(bh, ts);
+    @TearDown(Level.Iteration)
+    public void after() {
+        queue.clear();
     }
 
     @Threads(4)
@@ -92,23 +120,20 @@ public class MixedWorkloadBench {
     }
 
 
-//    @Threads(16)
-//    @Benchmark
-//    public void sixteenThreads(Blackhole bh, ThreadState ts) {
-//        doWork(bh, ts);
-//    }
-//
-//    @Threads(32)
-//    @Benchmark
-//    public void thirtyTwoThreads(Blackhole bh, ThreadState ts) {
-//        doWork(bh, ts);
-//    }
-
     private void doWork(Blackhole bh, ThreadState ts) {
         boolean isInsert = ts.insert;
         ts.insert = !isInsert;
         bh.consume(isInsert
                 ? queue.offer(ThreadLocalRandom.current().nextInt(10_000))
                 : queue.poll());
+    }
+
+    static class BenchRunner {
+        static void main() throws RunnerException {
+            Options options = new OptionsBuilder()
+                    .include(MixedWorkloadBench.class.getSimpleName())
+                    //.addProfiler(JavaFlightRecorderProfiler.class, "dir=C:\\jfr-sl")
+                    .build();
+            new org.openjdk.jmh.runner.Runner(options).run();        }
     }
 }
