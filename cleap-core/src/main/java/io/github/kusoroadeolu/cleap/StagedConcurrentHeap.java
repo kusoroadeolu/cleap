@@ -132,10 +132,6 @@ public class StagedConcurrentHeap<T extends Comparable<T>> implements Heap<T>{
         return size.get();
     }
 
-    @Override
-    public int capacity() {
-        return Integer.MAX_VALUE;
-    }
 
     @SuppressWarnings("unchecked")
     static class Node<T extends Comparable<T>> {

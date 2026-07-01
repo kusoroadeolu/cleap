@@ -176,12 +176,6 @@ public class OptimisticConcurrentHeap<T extends Comparable<T>> implements Heap<T
     public int size() {
         return size.get();
     }
-
-    @Override
-    public int capacity() {
-        return Integer.MAX_VALUE;
-    }
-
     @SuppressWarnings("unchecked")
     static class Node<T extends Comparable<T>> {
         volatile Node<T> next;

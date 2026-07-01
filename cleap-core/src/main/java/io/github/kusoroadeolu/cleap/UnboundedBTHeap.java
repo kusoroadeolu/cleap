@@ -149,11 +149,6 @@ public class UnboundedBTHeap<T extends Comparable<T>> implements Heap<T> {
     }
 
     @Override
-    public int capacity() {
-        return Integer.MAX_VALUE;
-    }
-
-    @Override
     public String toString() {
         return head == null ? null : head.toString();
 

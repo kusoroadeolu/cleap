@@ -9,6 +9,7 @@ import java.lang.invoke.VarHandle;
 import java.util.Comparator;
 import java.util.PriorityQueue;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.concurrent.locks.Lock;
@@ -97,7 +98,7 @@ public class PIPQ<T> implements Heap<T> {
             int failed = 0;
 
             while (failed < MAX_MISSES) {
-                if (wq.tryLock()) {
+                if (wq.tryLock(1)) {
                     try {
                         int size = wq.size();
                         var qMin = wq.peekMin();
@@ -123,7 +124,6 @@ public class PIPQ<T> implements Heap<T> {
                 }
 
                 ++failed;
-                idle();
             }
 
             if (b != ncpu) BOUND.compareAndSet(this, b, b + 1);
@@ -160,7 +160,7 @@ public class PIPQ<T> implements Heap<T> {
                     }
 
                     if (head.item.t() == wq.largestListValue) {
-                        ll.findListLargest(start, segment);
+                        wq.largestListValue = ll.findListLargest(start, segment);
                     }
 
                 }
@@ -315,11 +315,6 @@ public class PIPQ<T> implements Heap<T> {
         return 0;
     }
 
-    @Override
-    public int capacity() {
-        return Integer.MAX_VALUE;
-    }
-
 
     private static class WorkerPQLPad {
         long l1, l2, l3, l4, l5, l6, l7, l8;
@@ -351,6 +346,16 @@ public class PIPQ<T> implements Heap<T> {
         public boolean tryLock() {
             return lock.tryLock();
         }
+
+        public boolean tryLock(long ns) {
+            try {
+                return lock.tryLock(ns, TimeUnit.NANOSECONDS);
+            }catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException(e);
+            }
+        }
+
 
         void add(T t) {
             queue.offer(t);

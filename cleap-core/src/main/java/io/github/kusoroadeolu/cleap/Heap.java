@@ -1,10 +1,6 @@
 package io.github.kusoroadeolu.cleap;
 
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.Queue;
-
-public interface Heap<T> extends Queue<T> {
+public interface Heap<T> {
     boolean add(T t);
 
     T peek();
@@ -13,74 +9,6 @@ public interface Heap<T> extends Queue<T> {
 
     int size();
 
-    int capacity();
-
-    @Override
-    default boolean offer(T t) {
-        return add(t);
-    }
-
-    @Override
-    default T remove() {
-        return null;
-    }
-
-    @Override
-    default T element() {
-        return null;
-    }
-
-    @Override
-    default boolean isEmpty() {
-        return false;
-    }
-
-    @Override
-    default boolean contains(Object o) {
-        return false;
-    }
-
-    @Override
-    default Iterator<T> iterator() {
-        return null;
-    }
-
-    @Override
-    default Object[] toArray() {
-        return new Object[0];
-    }
-
-    @Override
-    default <T1> T1[] toArray(T1[] a) {
-        return null;
-    }
-
-    @Override
-    default boolean remove(Object o) {
-        return false;
-    }
-
-    @Override
-    default boolean containsAll(Collection<?> c) {
-        return false;
-    }
-
-    @Override
-    default boolean addAll(Collection<? extends T> c) {
-        return false;
-    }
-
-    @Override
-    default boolean removeAll(Collection<?> c) {
-        return false;
-    }
-
-    @Override
-    default boolean retainAll(Collection<?> c) {
-        return false;
-    }
-
-    @Override
     default void clear() {
 
     }

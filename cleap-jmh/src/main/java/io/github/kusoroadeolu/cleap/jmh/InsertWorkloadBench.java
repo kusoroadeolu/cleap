@@ -1,5 +1,6 @@
 package io.github.kusoroadeolu.cleap.jmh;
 
+import io.github.kusoroadeolu.cleap.Heap;
 import io.github.kusoroadeolu.cleap.OptimisticConcurrentHeap;
 import io.github.kusoroadeolu.cleap.PIPQ;
 import io.github.kusoroadeolu.cleap.StagedConcurrentHeap;
@@ -23,7 +24,7 @@ import java.util.concurrent.TimeUnit;
 @Measurement(iterations = 10, time = 1)
 @Fork(3)
 public class InsertWorkloadBench {
-    private Queue<Integer> queue;
+    private Heap<Integer> queue;
 
 
     /*
@@ -44,7 +45,7 @@ public class InsertWorkloadBench {
     @Setup
     public void setup() {
         queue = switch (type) {
-            case "JDK" -> new PriorityBlockingQueue<>();
+            case "JDK" -> new JDKHeap<>();
             case "PIPQ" -> new PIPQ<>();
             default -> throw new RuntimeException();
         };
@@ -70,7 +71,7 @@ public class InsertWorkloadBench {
 
 
     private void doWork(Blackhole bh) {
-        bh.consume(queue.offer(ThreadLocalRandom.current().nextInt(10_000)));
+        bh.consume(queue.add(ThreadLocalRandom.current().nextInt(10_000)));
     }
 
     static class BenchRunner {

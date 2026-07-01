@@ -107,8 +107,4 @@ public class UnboundedArrayHeap<T extends Comparable<T>> implements Heap<T>{
         return size;
     }
 
-    @Override
-    public int capacity() {
-        return capacity;
-    }
 }

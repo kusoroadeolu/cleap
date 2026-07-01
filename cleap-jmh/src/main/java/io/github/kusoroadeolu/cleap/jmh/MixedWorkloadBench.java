@@ -1,5 +1,6 @@
 package io.github.kusoroadeolu.cleap.jmh;
 
+import io.github.kusoroadeolu.cleap.Heap;
 import io.github.kusoroadeolu.cleap.OptimisticConcurrentHeap;
 import io.github.kusoroadeolu.cleap.PIPQ;
 import io.github.kusoroadeolu.cleap.StagedConcurrentHeap;
@@ -83,7 +84,7 @@ MixedWorkloadBench.fourThreads       JDK  thrpt   30  18.096 ± 0.280  ops/us
 * */
 
 public class MixedWorkloadBench {
-    private Queue<Integer> queue;
+    private Heap<Integer> queue;
 
     @Param({"PIPQ", "JDK"})
     private String type;
@@ -96,7 +97,7 @@ public class MixedWorkloadBench {
     @Setup
     public void setup() {
         queue = switch (type) {
-            case "JDK" -> new PriorityBlockingQueue<>();
+            case "JDK" -> new JDKHeap<>();
             case "PIPQ" -> new PIPQ<>();
             default -> throw new RuntimeException();
         };
@@ -124,7 +125,7 @@ public class MixedWorkloadBench {
         boolean isInsert = ts.insert;
         ts.insert = !isInsert;
         bh.consume(isInsert
-                ? queue.offer(ThreadLocalRandom.current().nextInt(10_000))
+                ? queue.add(ThreadLocalRandom.current().nextInt(10_000))
                 : queue.poll());
     }
 
@@ -136,4 +137,5 @@ public class MixedWorkloadBench {
                     .build();
             new org.openjdk.jmh.runner.Runner(options).run();        }
     }
+
 }
