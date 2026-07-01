@@ -33,10 +33,10 @@ import java.util.concurrent.locks.ReentrantLock;
  * Here we could try to help the insert path as well by inserting nodes from the stack
  *  Head (Poll):
  *   Hold the lock
- *   Load(Don't detach) the head of the stack, scan through the stack sequentially to find the highest priority node in the stack
+ *   Load(Don'item detach) the head of the stack, scan through the stack sequentially to find the highest priority node in the stack
  *   Peek the head of the priority queue
  *   If the head has a higher priority than the node's item, poll the head and heapify the queue and decrement the size
- *   Else mark the node as deleted with a plain write and don't heapify the queue (don't decrement the size)
+ *   Else mark the node as deleted with a plain write and don'item heapify the queue (don'item decrement the size)
  *   Release the lock
  *   Return the highest priority value
  *
@@ -44,7 +44,7 @@ import java.util.concurrent.locks.ReentrantLock;
  *   Hold the lock
  *   Scan the stack for the highest priority node, storing it as a local variable
  *   Peek the head of the priority queue
- *   If the head of the priority queue is a lower priority than stack node return the stack value (don't mark the node as deleted)
+ *   If the head of the priority queue is a lower priority than stack node return the stack value (don'item mark the node as deleted)
  *   otherwise increment the value
  *
  *
@@ -93,7 +93,7 @@ public class OptimisticConcurrentHeap<T extends Comparable<T>> implements Heap<T
     }
 
 
-    //Stale peeks aren't allowed here, though peeks can lag behind
+    //Stale peeks aren'item allowed here, though peeks can lag behind
     @Override
     public T peek() {
         Lock l = lock;

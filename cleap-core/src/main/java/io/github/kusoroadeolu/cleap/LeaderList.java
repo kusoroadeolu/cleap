@@ -8,7 +8,7 @@ import java.util.Objects;
 
 /*
 A lock free ordered linked singly linked list set
-States - marked (linearization point for removal), null key (means the pred node has been logically fully deleted), next pointer marked as a tombstone (node is going to be unlinked, don't cas to it's next ptr)
+States - marked (linearization point for removal), null key (means the pred node has been logically fully deleted), next pointer marked as a tombstone (node is going to be unlinked, don'item cas to it's next ptr)
 The next node ideas were borrowed from fraser's thesis and the JDK Skip list map
 
 The 2 main ideas here are helping and ownership checks for a node's next pointer using a cas
@@ -64,7 +64,7 @@ public class LeaderList<T>{
             var pred = l;
             var curr = pred.loNext();
             for (;;) {
-                if (curr.isDummy()) continue restartFromLeft; // We need to restart from left, here, we could keep traversing forward ideally, if pred < t
+                if (curr.isDummy()) continue restartFromLeft; // We need to restart from left, here, we could keep traversing forward ideally, if pred < item
 
                 var s = curr.status;
 
@@ -79,8 +79,8 @@ public class LeaderList<T>{
                 if (res > 0) pred = curr;
                 else {
                     //Ensure we immediately set curr = next; backed by volatile write
-                    //Otherwise if we fail, move backwards, don't change pred, two things could've happened, pred was deleted (its dummy tombstone was introduced) or a new node greater than pred was added (this node could be > or < us)
-                    //However since we're always > pred, we don't need to restart from left
+                    //Otherwise if we fail, move backwards, don'item change pred, two things could've happened, pred was deleted (its dummy tombstone was introduced) or a new node greater than pred was added (this node could be > or < us)
+                    //However since we're always > pred, we don'item need to restart from left
                     if (node == null) node = new Node<>(new WQNode<>(t, segment)); //Lazily initialize
                     node.spNext(curr);
                     if (pred.casNext(curr, node)) {
@@ -99,10 +99,11 @@ public class LeaderList<T>{
     * A B C D
     * c(v:1 s:2) a(v:2 tbd) b(v:3 tbd) d(v:5 s:2)
     * */
-    Node<WQNode<T>> peek() {
+    Node<WQNode<T>> poll() {
         var l = left;
         var r = right;
         restartFromLeft: for (; ;) {
+            var pred = l;
             var curr = l.loNext();
 
             for (;;) {
@@ -111,11 +112,12 @@ public class LeaderList<T>{
                 var s = curr.status;
 
                 if (curr == r) return null;
-                else if (s == null && curr.casTBR()) {
+                else if (s == null && curr.casMarked()) {
+                    helpUnlink(pred, curr);
                     return curr;
                 }
 
-                curr = curr.loNext();
+                pred = curr; curr = curr.loNext();
             }
         }
     }
@@ -128,7 +130,7 @@ public class LeaderList<T>{
 
     /*
     * Pretty strict but this is to ensure given a zero idx set of p [1 - 5]
-    * a given thread t will never delete all values (2 - 5) at any point a value 1 has been inserted, it will retry and see one immediately its inserted
+    * a given thread item will never delete all values (2 - 5) at any point a value 1 has been inserted, it will retry and see one immediately its inserted
     * */
     public WQNode<T> removeFirstValidNode() {
         var l = left;
@@ -170,7 +172,7 @@ public class LeaderList<T>{
     * from the strict delete method, if c and d have been deleted, that means there exist no scenario, where a and b exist if c and d are deleted
     * if a or b were inserted before c or d (since this is method protected by a lock, the scenario is impossible)
     * */
-    MoveResult<T> moveFromList(T toBeInserted, T toBeRemoved, int segment) {
+    MoveResult<T> insertAndReturnLargestSegmentNode(T toBeInserted, T toBeRemoved, int segment) {
         var startNode = insert(Objects.requireNonNull(toBeInserted) ,segment);
 
         var l = left;
@@ -189,17 +191,19 @@ public class LeaderList<T>{
                 var s = curr.status;
                 var currSegment = curr.item.segment;
 
-                if (s == Status.MARKED) {
-                    curr = helpUnlink(pred, curr);
-                    continue;
-                }
-
                 int res = compare(toBeRemoved, cmp, curr, l, r);
+
+                if (res < 0) return new MoveResult<>(newLlv, false);
 
                 if (res == 0 && currSegment == segment) {
                     boolean marked = curr.casMarked();
                     helpUnlink(pred, curr);
-                    return new MoveResult<>(newLlv.item.t(), marked);
+                    return new MoveResult<>(newLlv, marked);
+                }
+
+                if (s == Status.MARKED) {
+                    curr = helpUnlink(pred, curr);
+                    continue;
                 }
 
 
@@ -211,7 +215,7 @@ public class LeaderList<T>{
         }
     }
 
-    T findListLargest(Node<WQNode<T>> start, int segment) {
+    Node<WQNode<T>> findListLargest(Node<WQNode<T>> start, int segment) {
         var l = start == null ? left : start;
         var r = right;
         var newLlv = start;
@@ -221,7 +225,7 @@ public class LeaderList<T>{
 
             for (;;) {
                 if (curr == r) {
-                    return curr == left ? null : newLlv.item.t();
+                    return curr == left ? null : newLlv;
                 }
 
                 if (!curr.isDummy() && curr.item.segment == segment) newLlv = curr;
@@ -331,11 +335,6 @@ public class LeaderList<T>{
             return NEXT.compareAndSet(this, seen, ours);
         }
 
-        boolean shouldUnlink() {
-            var status = STATUS.getVolatile(this);
-            return status == Status.MARKED;
-        }
-
         public boolean isMarked(){
             return (Status) STATUS.getVolatile(this) == Status.MARKED;
         }
@@ -353,10 +352,6 @@ public class LeaderList<T>{
 
         public boolean casMarked() {
             return STATUS.compareAndSet(this, null, Status.MARKED);
-        }
-
-        public boolean casTBR() {
-            return STATUS.compareAndSet(this, null, Status.TBR);
         }
 
         @Override
@@ -418,8 +413,7 @@ public class LeaderList<T>{
     }
 
     enum Status {
-        MARKED, //logically added but need to move a node downwards
-        TBR
+        MARKED //logically added but need to move a node downwards
     }
 
     record WQNode<T> (T t, int segment) implements Comparable<T>{
@@ -429,7 +423,7 @@ public class LeaderList<T>{
         }
     }
 
-    record MoveResult<T>(T t, boolean marked) {
+    record MoveResult<T>(Node<WQNode<T>> item, boolean marked) {
 
     }
 }

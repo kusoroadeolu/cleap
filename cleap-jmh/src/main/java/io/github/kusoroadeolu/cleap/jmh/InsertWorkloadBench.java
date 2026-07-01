@@ -38,7 +38,7 @@ public class InsertWorkloadBench {
         InsertWorkloadBench.fourThreads      STA  thrpt   30  2.983 ± 0.750  ops/us
         Here we can see that the null -> acquire lock actually has better thrpt across all thread counts
     * */
-    @Param({"PIPQ", "JDK"}) //JDK, Optimistic
+    @Param({"PIPQ"}) //JDK, Optimistic
     private String type;
 
     @Setup
@@ -53,6 +53,7 @@ public class InsertWorkloadBench {
     @TearDown(Level.Iteration)
     public void after() {
         queue.clear();
+        //System.out.println(((PIPQ<?>)queue).bound()) ;
     }
 
 

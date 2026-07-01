@@ -5,6 +5,7 @@ import io.github.kusoroadeolu.cleap.PIPQ;
 import io.github.kusoroadeolu.cleap.StagedConcurrentHeap;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
+import org.openjdk.jmh.profile.JavaFlightRecorderProfiler;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
@@ -71,21 +72,17 @@ MixedWorkloadBench.fourThreads      PIPQ  avgt   30  0.332 ± 0.004  us/op
 MixedWorkloadBench.fourThreads       JDK  avgt   30  0.225 ± 0.006  us/op
 *
 *
-* Benchmark                         (type)   Mode  Cnt   Score   Error   Units
-InsertWorkloadBench.eightThreads    PIPQ  thrpt   30   7.916 ± 0.505  ops/us
-InsertWorkloadBench.eightThreads     JDK  thrpt   30  10.678 ± 0.741  ops/us
-InsertWorkloadBench.fourThreads     PIPQ  thrpt   30  10.096 ± 0.616  ops/us
-InsertWorkloadBench.fourThreads      JDK  thrpt   30  10.472 ± 0.643  ops/us
-MixedWorkloadBench.eightThreads     PIPQ  thrpt   30   9.630 ± 0.258  ops/us
-MixedWorkloadBench.eightThreads      JDK  thrpt   30  15.488 ± 0.619  ops/us
-MixedWorkloadBench.fourThreads      PIPQ  thrpt   30  12.080 ± 0.124  ops/us
-MixedWorkloadBench.fourThreads       JDK  thrpt   30  18.096 ± 0.280  ops/us
+* Benchmark
+MixedWorkloadBench.eightThreads    PIPQ  thrpt   30  9.798 ± 0.178  ops/us
+MixedWorkloadBench.fourThreads     PIPQ  thrpt   30  9.658 ± 0.289  ops/us
+InsertWorkloadBench.eightThreads    PIPQ  thrpt   30  8.806 ± 0.749  ops/us
+InsertWorkloadBench.fourThreads     PIPQ  thrpt   30  9.163 ± 0.484  ops/us
 * */
 
 public class MixedWorkloadBench {
     private Queue<Integer> queue;
 
-    @Param({"PIPQ", "JDK"})
+    @Param({"PIPQ"})
     private String type;
 
     @State(Scope.Thread)
@@ -105,6 +102,7 @@ public class MixedWorkloadBench {
     @TearDown(Level.Iteration)
     public void after() {
         queue.clear();
+        //System.out.println(((PIPQ<?>)queue).bound()) ;
     }
 
     @Threads(4)
@@ -132,7 +130,7 @@ public class MixedWorkloadBench {
         static void main() throws RunnerException {
             Options options = new OptionsBuilder()
                     .include(MixedWorkloadBench.class.getSimpleName())
-                    //.addProfiler(JavaFlightRecorderProfiler.class, "dir=C:\\jfr-sl")
+                    .addProfiler(JavaFlightRecorderProfiler.class, "dir=C:\\jfr-sl")
                     .build();
             new org.openjdk.jmh.runner.Runner(options).run();        }
     }

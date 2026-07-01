@@ -9,6 +9,7 @@ import java.lang.invoke.VarHandle;
 import java.util.Comparator;
 import java.util.PriorityQueue;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.concurrent.locks.Lock;
@@ -23,7 +24,7 @@ import java.util.concurrent.locks.ReentrantLock;
 * Deletes on this shared list are serialized while up to N number of inserts can happen concurrently(meaning per worker pq, inserts are also serialized)
 *
 * Ideally the paper which this was adapted from assumes segmentation through numa nodes (i.e. a pre allocated array index for threads running on a numa node)
-* However, since we don't have this luxury, during inserts threads randomly select an array index to work on. To reduce threads waiting on array indexes,
+* However, since we don'item have this luxury, during inserts threads randomly select an array index to work on. To reduce threads waiting on array indexes,
 * we shrink or increase the range of the array of which we can work on when we fail to acquire a lock after 2 tries
 *
 *
@@ -34,12 +35,12 @@ import java.util.concurrent.locks.ReentrantLock;
 * this could cause an issue where regarding largest list value (llv) of a segment if the segment counter was one though the llv of a segment was
 * logically deleted outside which could cause for stale values regarding the llv, if multiple insertions followed,
 * before the delete operation could acquire the lock to update the stale value. A fix proposed was to store the node not the value itself and force threads to
-* read the status of a node before comparing (if its deleted, we re-search the list for the new llv otherwise,we don't).
-* However I didn't do it because honestly the llv should be updated under the lock to prevent weird interleavings
+* read the status of a node before comparing (if its deleted, we re-search the list for the new llv otherwise,we don'item).
+* However I didn'item do it because honestly the llv should be updated under the lock to prevent weird interleavings
 *
 *
 * Another issue i came across is one where the counter of a segment could be decremented twice (rather than once), when an inserting thread upserts a value when segment.count == CNTR_MAX
-* This could occur if the segment value didn't check if the llv had been logically deleted before add the llv to the queue after moving it downwards
+* This could occur if the segment value didn'item check if the llv had been logically deleted before add the llv to the queue after moving it downwards
 * */
 public class PIPQ<T> implements Heap<T> {
 
@@ -51,7 +52,7 @@ public class PIPQ<T> implements Heap<T> {
     private final SegmentCoordinatorLocks locks;
     private final AnnouncementArena<T> announcements;
 
-    private static final int MAX_MISSES = 3;
+    private static final int MAX_MISSES = 5;
     private static final int MAX_SPINS = 500;
     private static final int CNTR_MAX = 100;
     private static final int CNTR_MIN = 5;
@@ -97,22 +98,34 @@ public class PIPQ<T> implements Heap<T> {
             int failed = 0;
 
             while (failed < MAX_MISSES) {
-                if (wq.tryLock()) {
+                if (wq.tryLock(5)) {
                     try {
                         int size = wq.size();
                         var qMin = wq.peekMin();
                         if (size == 0 || compare(t, qMin, cmp) < 0) {
-                            int count = wq.segmentCount();
+                            int count = wq.segmentListCount();
                             var llv = wq.largestListValue;
-
+                            var ll = leaderList;
                             if (count == CNTR_MAX) {
-                                int res = compare(t, llv, cmp);
-                                if (res > 0) wq.add(t); //Lower prio tha
-                                else shiftUp(wq, t, llv, segment);
+                                boolean isMarked = false;
+                                if (llv == null || (isMarked = llv.isMarked())) {
+                                    wq.largestListValue = ll.findListLargest(null, segment);
+                                    llv = wq.largestListValue;
+                                }
+
+                                int res = compare(t, llv.item.t(), cmp);
+                                if (res > 0 && !isMarked) wq.add(t); //Lower prio tha
+                                else if (res > 0) {
+                                    wq.largestListValue = ll
+                                            .insertAndReturnLargestSegmentNode(t, llv.item.t(), segment)
+                                            .item();
+                                }
+                                else shiftUp(wq, t, llv.item.t(), segment);
+
+
                             } else {
-                                leaderList.insert(t, segment);
+                                ll.insert(t, segment);
                                 wq.incrementListCount();
-                                if (llv == null || compare(t, llv, cmp) > 0) wq.largestListValue = t;
                             }
                         } else wq.add(t);
 
@@ -123,7 +136,6 @@ public class PIPQ<T> implements Heap<T> {
                 }
 
                 ++failed;
-                idle();
             }
 
             if (b != ncpu) BOUND.compareAndSet(this, b, b + 1);
@@ -136,39 +148,36 @@ public class PIPQ<T> implements Heap<T> {
         var ll = leaderList;
 
         for (;;) {
-            var head = ll.peek();
+            var head = ll.poll();
 
             if (head == null) return null;
 
             int segment = head.item.segment();
             var wq = wqs[segment];
-            wq.lock();
-            try {
-               ll.removeTBR(head);
-               int count = wq.decrementListCount();
-                Node<WQNode<T>> start = null;
-                if (count < CNTR_MIN) {
-                    T min = wq.deleteMin();
-                    if (min == null && count == 1) { //if queue is empty and there's no value in the list
-                        int b; //bound is 1 indexed, segment is zero indexed
-                        if (segment > 0 && (b = bound) == (segment + 1)) BOUND.compareAndSet(this, b, b - 1); //if this is the greatest segment bound, try to decrease
-                        wq.largestListValue = null;
-                        return head.item.t();
-                    } else if (min != null) {
-                        start = ll.insert(min, segment);
-                        wq.incrementListCount();
+            int cnt = wq.decrementListCount();
+
+            if (cnt <= CNTR_MIN){
+                wq.lock();
+                try {
+                    int count = wq.segmentListCount();
+                    if (count < CNTR_MIN) {
+                        T min = wq.deleteMin();
+                        if (min == null && count == 0) { //if queue is empty and there's no value in the list
+                            int b; //bound is 1 indexed, segment is zero indexed
+                            if (segment > 0 && (b = bound) == (segment + 1)) BOUND.compareAndSet(this, b, b - 1); //if this is the greatest segment bound, try to decrease
+                            wq.largestListValue = null;
+                        } else if (min != null) {
+                            ll.insert(min, segment);
+                            wq.incrementListCount();
+                        }
                     }
 
-                    if (head.item.t() == wq.largestListValue) {
-                        ll.findListLargest(start, segment);
-                    }
-
+                    return head.item.t();
+                }finally {
+                    wq.unlock();
                 }
-
-               return head.item.t();
-            }finally {
-                wq.unlock();
             }
+
         }
     }
 
@@ -187,112 +196,16 @@ public class PIPQ<T> implements Heap<T> {
         }
     }
 
-    // EXPERIMENTAL POLL (using combining)
-
-    //    @Override
-//    public T poll() {
-//        var wqs = workerQueues;
-//        var cmp = comparator;
-//        var locks = this.locks;
-//        var ll = leaderList;
-//        var aa = announcements;
-//
-//        Announcement<T> ours = new Announcement<>();
-//
-//        for (;;) {
-//            int b = bound;
-//            int segment = ThreadLocalRandom.current().nextInt(b);
-//            int tries = 0;
-//            int idx = -1;
-//            for (;;) {
-//                if (locks.tryAcquire(segment)) {
-//                    if (aa.isFree() && (idx = aa.nextIndex()) == AnnouncementArena.FREE) {
-//                        try {
-//                            int removedSeg = closeAnnouncement(ours, ll);
-//                            if (removedSeg != -1) {
-//                                var rwq = wqs[removedSeg];
-//                                int decr = rwq.decrementListCount();
-//                                if (decr < CNTR_MIN) upsert(rwq, removedSeg, ll);
-//                            }
-//
-//                            for (int i = 0; i < ncpu; ++i) {
-//                                var seen = aa.get(i);
-//                                boolean claimed = aa.tryClaim(i, seen);
-//                                if (claimed) {
-//                                    removedSeg = closeAnnouncement(seen, ll);
-//                                    aa.setDone(i);
-//                                    var rwq = wqs[removedSeg];
-//                                    int decr = rwq.decrementListCount();
-//                                    if (decr < CNTR_MIN) upsert(rwq, removedSeg, ll);
-//                                }
-//                            }
-//                            return ours.value;
-//                        }finally {
-//                            aa.release();
-//                        }
-//                    } else {
-//                       // if (idx < ncpu) aa.cas(idx, ours);
-//
-//                    }
-//
-//                }
-//            }
-//        }
-//    }
-
-//    boolean awaitResult(Announcement<T> a, int index, AnnouncementArena<T> aa ,WorkerPQSegment<T> wq, int segment, LeaderList<T> ll) {
-//        if (index >= ncpu) return false;
-//        int spins = 0;
-//        while (spins++ < MAX_SPINS){
-//            var ours = aa.get(index);
-//            if (ours != CLAIMED && ours != a) return true;
-//            helpUpsert(wq, segment, ll);
-//        }
-//
-//        return false;
-//    }
-//
-//    int closeAnnouncement(Announcement<T> a, LeaderList<T> ll) {
-//        var wqn = ll.removeFirstValidNode();
-//        if (wqn != null) {
-//            a.value = wqn.t();
-//            return wqn.segment();
-//        } else return -1;
-//    }
-
-//    void helpUpsert(WorkerPQSegment<T> wq, int segment , LeaderList<T> ll) {
-//        int unsafeCount = wq.segmentCount();
-//        if (unsafeCount < CNTR_MIN) upsert(wq, segment, ll);
-//    }
-//
-//    void upsert(WorkerPQSegment<T> wq, int segment , LeaderList<T> ll) {
-//        try {
-//            int count = wq.segmentCount(); //can use a plain read for this, for deletions
-//            if (count < CNTR_MIN) {
-//                T min = wq.deleteMin();
-//                if (min == null && count == 0) { //if queue is empty and there's no value in the list
-//                    int b; //bound is 1 indexed, segment is zero indexed
-//                    if (segment > 0 && (b = bound) == (segment + 1)) BOUND.compareAndSet(this, b, b - 1); //if this is the greatest segment bound, try to decrease
-//                    wq.largestListValue = null;
-//                } else if (min != null) {
-//                    ll.insert(min, segment);
-//                    wq.incrementListCount();
-//                }
-//            }
-//        }finally {
-//            wq.unlock();
-//        }
-//    }
-
     void idle() {
         for (int i = 0; i < MAX_SPINS; ++i) Thread.onSpinWait();
     }
 
     void shiftUp(WorkerPQSegment<T> wq, T t, T llv, int segment) {
         var ls = leaderList;
-        var mvResult = ls.moveFromList(t, llv, segment);
+        var mvResult = ls.insertAndReturnLargestSegmentNode(t, llv, segment);
+
         if (mvResult.marked()) wq.add(llv);
-        wq.largestListValue = mvResult.t();
+        wq.largestListValue = mvResult.item();
 
     }
 
@@ -328,7 +241,7 @@ public class PIPQ<T> implements Heap<T> {
     private static class WorkerPQFields<T> extends WorkerPQLPad{
         final PriorityQueue<T> queue;
         final Lock lock;
-        T largestListValue; //Lowest prio value in the list for this pq
+        Node<WQNode<T>> largestListValue; //Lowest prio value in the list for this pq
         volatile int segmentCount; //Number of values related to this segment in the shared list
 
         public WorkerPQFields(Comparator<T> comparator) {
@@ -350,6 +263,15 @@ public class PIPQ<T> implements Heap<T> {
 
         public boolean tryLock() {
             return lock.tryLock();
+        }
+
+        public boolean tryLock(long ns) {
+            try {
+                return lock.tryLock(ns, TimeUnit.NANOSECONDS);
+            }catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException(e);
+            }
         }
 
         void add(T t) {
@@ -376,7 +298,7 @@ public class PIPQ<T> implements Heap<T> {
             return (int) SEGMENT_COUNT.getAndAdd(this, -1);
         }
 
-        public int segmentCount() {
+        public int segmentListCount() {
             return (int) SEGMENT_COUNT.getAcquire(this);
         }
 
