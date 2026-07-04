@@ -6,6 +6,8 @@ import io.github.kusoroadeolu.cleap.LeaderList.WQNode;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
+import java.math.BigInteger;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.PriorityQueue;
 import java.util.concurrent.ThreadLocalRandom;
@@ -169,6 +171,8 @@ public class PIPQ<T> implements Heap<T> {
             }finally {
                 wq.unlock();
             }
+
+
         }
     }
 
