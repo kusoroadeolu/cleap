@@ -1,9 +1,11 @@
-package io.github.kusoroadeolu.cleap;
+package io.github.kusoroadeolu.cleap.experimental;
+
+import io.github.kusoroadeolu.cleap.Heap;
 
 import java.util.Arrays;
 
 //Same mech as a bounded array heap, but with a grow method if the array overflows
-public class UnboundedArrayHeap<T extends Comparable<T>> implements Heap<T>{
+public class UnboundedArrayHeap<T extends Comparable<T>> implements Heap<T> {
     private Object[] tree;
     private int capacity;
     private int size;

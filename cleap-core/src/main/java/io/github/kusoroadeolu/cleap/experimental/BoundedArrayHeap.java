@@ -1,4 +1,6 @@
-package io.github.kusoroadeolu.cleap;
+package io.github.kusoroadeolu.cleap.experimental;
+
+import io.github.kusoroadeolu.cleap.Heap;
 
 import java.util.Arrays;
 

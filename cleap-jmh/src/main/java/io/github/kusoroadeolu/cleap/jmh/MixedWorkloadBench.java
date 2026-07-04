@@ -1,22 +1,18 @@
 package io.github.kusoroadeolu.cleap.jmh;
 
 import io.github.kusoroadeolu.cleap.Heap;
-import io.github.kusoroadeolu.cleap.OptimisticConcurrentHeap;
-import io.github.kusoroadeolu.cleap.PIPQ;
-import io.github.kusoroadeolu.cleap.StagedConcurrentHeap;
+import io.github.kusoroadeolu.cleap.bounded.LBBoundedPQ;
+import io.github.kusoroadeolu.cleap.experimental.PIPQ;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
-import java.util.PriorityQueue;
-import java.util.Queue;
-import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
-@BenchmarkMode(Mode.AverageTime)
+@BenchmarkMode(Mode.SampleTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @State(Scope.Benchmark)
 @Warmup(iterations = 10, time = 1)
@@ -86,7 +82,7 @@ MixedWorkloadBench.fourThreads       JDK  thrpt   30  18.096 ± 0.280  ops/us
 public class MixedWorkloadBench {
     private Heap<Integer> queue;
 
-    @Param({"PIPQ", "JDK"})
+    @Param({"LB"})
     private String type;
 
     @State(Scope.Thread)
@@ -98,21 +94,21 @@ public class MixedWorkloadBench {
     public void setup() {
         queue = switch (type) {
             case "JDK" -> new JDKHeap<>();
-            case "PIPQ" -> new PIPQ<>();
+            case "LB" -> new LBBoundedPQ<>(1000);
             default -> throw new RuntimeException();
         };
     }
+//
+//    @TearDown(Level.Iteration)
+//    public void after() {
+//        queue.clear();
+//    }
 
-    @TearDown(Level.Iteration)
-    public void after() {
-        queue.clear();
-    }
-
-    @Threads(4)
-    @Benchmark
-    public void fourThreads(Blackhole bh, ThreadState ts) {
-        doWork(bh, ts);
-    }
+//    @Threads(4)
+//    @Benchmark
+//    public void fourThreads(Blackhole bh, ThreadState ts) {
+//        doWork(bh, ts);
+//    }
 
     @Threads(8)
     @Benchmark
@@ -125,7 +121,7 @@ public class MixedWorkloadBench {
         boolean isInsert = ts.insert;
         ts.insert = !isInsert;
         bh.consume(isInsert
-                ? queue.add(ThreadLocalRandom.current().nextInt(10_000))
+                ? queue.add(ThreadLocalRandom.current().nextInt(1_000_000))
                 : queue.poll());
     }
 

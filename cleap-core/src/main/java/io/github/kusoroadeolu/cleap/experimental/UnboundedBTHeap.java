@@ -1,9 +1,9 @@
-package io.github.kusoroadeolu.cleap;
+package io.github.kusoroadeolu.cleap.experimental;
 
 
 // An unbounded node based heap
 
-import io.github.kusoroadeolu.veneer.XMLSyntaxHighlighter;
+import io.github.kusoroadeolu.cleap.Heap;
 
 import java.util.Objects;
 

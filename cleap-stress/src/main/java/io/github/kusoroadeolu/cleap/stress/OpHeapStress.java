@@ -1,11 +1,16 @@
 package io.github.kusoroadeolu.cleap.stress;
 
 import io.github.kusoroadeolu.cleap.Heap;
-import io.github.kusoroadeolu.cleap.OptimisticConcurrentHeap;
+import io.github.kusoroadeolu.cleap.experimental.OptimisticConcurrentHeap;
 import org.openjdk.jcstress.annotations.*;
 import org.openjdk.jcstress.infra.results.I_Result;
 
 import java.util.List;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import static org.openjdk.jcstress.annotations.Expect.ACCEPTABLE;
+import static org.openjdk.jcstress.annotations.Expect.ACCEPTABLE_INTERESTING;
 
 public class OpHeapStress {
 
@@ -35,7 +40,7 @@ public class OpHeapStress {
             else res.r1 = 0;
         }
 
-        }
+    }
 
 
     @JCStressTest
@@ -63,4 +68,36 @@ public class OpHeapStress {
 
     }
 
+    @JCStressTest(Mode.Termination)
+    @Outcome(id = "TERMINATED", expect = ACCEPTABLE,             desc = "Gracefully finished")
+    @Outcome(id = "STALE",      expect = ACCEPTABLE_INTERESTING, desc = "Test is stuck")
+    @State
+    //Assert deleted nodes are never inserted
+    public static class RWVisibility {
+        private ReadWriteLock rwLock = new ReentrantReadWriteLock();
+        private boolean signal;
+
+        @Signal
+        public void readLocker() {
+            rwLock.readLock().lock();
+            try {
+                signal = true;
+            }finally {
+                rwLock.readLock().unlock();
+            }
+        }
+
+        @Actor
+        public void writeLocker() {
+            for (;;) {
+                rwLock.writeLock().lock();
+                try {
+                    if (signal) break;
+                }finally {
+                    rwLock.writeLock().unlock();
+                }
+            }
+        }
+
+    }
 }

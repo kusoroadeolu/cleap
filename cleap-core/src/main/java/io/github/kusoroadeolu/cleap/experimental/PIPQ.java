@@ -1,13 +1,12 @@
-package io.github.kusoroadeolu.cleap;
+package io.github.kusoroadeolu.cleap.experimental;
 
 
-import io.github.kusoroadeolu.cleap.LeaderList.Node;
-import io.github.kusoroadeolu.cleap.LeaderList.WQNode;
+import io.github.kusoroadeolu.cleap.Heap;
+import io.github.kusoroadeolu.cleap.experimental.LeaderList.Node;
+import io.github.kusoroadeolu.cleap.experimental.LeaderList.WQNode;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
-import java.math.BigInteger;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.PriorityQueue;
 import java.util.concurrent.ThreadLocalRandom;

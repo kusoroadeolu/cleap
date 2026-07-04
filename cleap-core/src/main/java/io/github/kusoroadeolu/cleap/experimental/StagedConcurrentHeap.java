@@ -1,5 +1,7 @@
-package io.github.kusoroadeolu.cleap;
+package io.github.kusoroadeolu.cleap.experimental;
 
+
+import io.github.kusoroadeolu.cleap.Heap;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
@@ -47,7 +49,7 @@ import java.util.concurrent.locks.ReentrantLock;
  *   Peek the head of the priority queue
  *   Release the lock
  * */
-public class StagedConcurrentHeap<T extends Comparable<T>> implements Heap<T>{
+public class StagedConcurrentHeap<T extends Comparable<T>> implements Heap<T> {
 
     private final Lock lock;
     private final MPSCStack<T> stack;

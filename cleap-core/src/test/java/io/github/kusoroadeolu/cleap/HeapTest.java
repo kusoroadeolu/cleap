@@ -1,5 +1,8 @@
 package io.github.kusoroadeolu.cleap;
 
+import io.github.kusoroadeolu.cleap.experimental.BoundedArrayHeap;
+import io.github.kusoroadeolu.cleap.experimental.OptimisticConcurrentHeap;
+import io.github.kusoroadeolu.cleap.experimental.UnboundedBTHeap;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 

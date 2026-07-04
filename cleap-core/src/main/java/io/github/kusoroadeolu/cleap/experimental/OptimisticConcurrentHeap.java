@@ -1,4 +1,6 @@
-package io.github.kusoroadeolu.cleap;
+package io.github.kusoroadeolu.cleap.experimental;
+
+import io.github.kusoroadeolu.cleap.Heap;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
@@ -6,7 +8,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Objects;
 import java.util.PriorityQueue;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
