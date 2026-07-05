@@ -11,6 +11,11 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.openjdk.jcstress.annotations.Expect.ACCEPTABLE;
+import static org.openjdk.jcstress.annotations.Expect.ACCEPTABLE_INTERESTING;
 
 public class LBPQStress {
     @JCStressTest
@@ -113,8 +118,28 @@ public class LBPQStress {
             if (x == null) r.r2 = 0;
             else r.r2 = 1;
         }
+    }
 
+    @JCStressTest(Mode.Termination)
+    @Outcome(id = "TERMINATED", expect = ACCEPTABLE,             desc = "Gracefully finished")
+    @Outcome(id = "STALE",      expect = ACCEPTABLE_INTERESTING, desc = "Test is stuck")
+    @State
+    //If a merge is necessary, both values do not return null
+    public static class Misc {
+        private AtomicBoolean a = new AtomicBoolean(false);
+        private AtomicBoolean b = new AtomicBoolean(false);
 
+        //One thread should trigger a merge, so one thread should at least valid value
+        @Signal
+        public void writer() {
+            a.setPlain(true);
+            b.setRelease(true);
+        }
+
+        @Actor
+        public void reader() {
+            while (!a.getAcquire());
+        }
 
     }
 }

@@ -28,7 +28,7 @@ public class LBBoundedPQ<T> implements Heap<T> {
         this.maxDaCapacity = Math.max(1, (int) (0.1 * capacity));
         this.insertArray = new InsertArray<>(capacity);
         this.deleteArray = new DeleteArray<>(0);
-        this.slack = 10;
+        this.slack = Math.max(1, (int) (0.1 * maxDaCapacity));
         this.nullReverseComparator = (a, b) -> {
             if (b == null || a == null) return 0;
             return compare(b, a);
@@ -52,7 +52,7 @@ public class LBBoundedPQ<T> implements Heap<T> {
         this.maxDaCapacity = Math.max(1, (int) (0.1 * capacity));
         this.insertArray = ia;
         this.deleteArray = da;
-        this.slack = 10;
+        this.slack = Math.max(1, (int) (0.1 * maxDaCapacity));
         this.nullReverseComparator = (a, b) -> {
             if (b == null || a == null) return 1;
             return compare(b, a);
@@ -70,7 +70,7 @@ public class LBBoundedPQ<T> implements Heap<T> {
             int index = ia.loIndex();
 
             if (index == capacity) return false;
-            var da = deleteArray;
+            var da = loDArr();
             Status daStatus;
 
             for (;;) {
@@ -102,7 +102,7 @@ public class LBBoundedPQ<T> implements Heap<T> {
     @Override
     public T poll() {
         outer: for (;;) {
-            var da = deleteArray;
+            var da = loDArr();
             int daSize;
             int seenIndex;
             int daIndex;
@@ -113,9 +113,9 @@ public class LBBoundedPQ<T> implements Heap<T> {
                 daStatus = da.status;
                 daSize = da.capacity;
 
-                if (isFreezingOrFrozen(daStatus.state)) {
+                if (isMerging(daStatus.state)) {
                     for (;;) {
-                        if (da != deleteArray) continue outer;
+                        if (da != loDArr()) continue outer;
                         Thread.onSpinWait();
                     }
                 }
@@ -128,7 +128,7 @@ public class LBBoundedPQ<T> implements Heap<T> {
 
                 boolean isEmpty = daIndex == daSize;
 
-                if (isEmpty && seenIndex == 0) return null;
+                if (isEmpty && seenIndex == 0) return null; //DA and IA are empty
 
                 boolean shouldMerge = isEmpty || da.mergeCount >= slack;
                 // if , reassign daStatus if the cas succeeds
@@ -140,7 +140,7 @@ public class LBBoundedPQ<T> implements Heap<T> {
                         break;
                     } else {
                         for (;;) {
-                            if (da != deleteArray) continue outer;
+                            if (da != loDArr()) continue outer;
                             Thread.onSpinWait();
                         }
                     }
@@ -151,13 +151,13 @@ public class LBBoundedPQ<T> implements Heap<T> {
             }
 
             var lock = ia.rwLock.writeLock();
-
             lock.lock();
             try {
                 var iItems = ia.items;
                 var dItems = da.items;
                 var cmp = nullReverseComparator;
-                int iIndex = ia.loIndex(); //start index for insert array (val at this index is always null)
+                var mda = maxDaCapacity;
+                int iIndex = ia.lpIndex(); //start index for insert array (val at this index is always null)
                 int dIndex = daStatus.index; //start index for delete array
                 int dSize = da.capacity;
                 for (int i = dIndex; i < dSize; ++i) {
@@ -188,7 +188,7 @@ public class LBBoundedPQ<T> implements Heap<T> {
                 currIIndex to Math.max(0, currIIndex - 30)
                 * */
 
-                int newDSize = Math.min(iIndex, maxDaCapacity);
+                int newDSize = Math.min(iIndex, mda);
                 var newDa = new DeleteArray<T>(newDSize, new DeleteArray.Status(1, NONE));
                 for (int i = iIndex - 1, j = 0; j < newDSize; --i, j++) {
                     var v = iItems[i];
@@ -197,8 +197,9 @@ public class LBBoundedPQ<T> implements Heap<T> {
                 }
 
                 T item = newDa.items[0];
-                ia.index = Math.max(0, iIndex - maxDaCapacity);
-                deleteArray = newDa;
+                //For inserts backed by exclusive lock, otherwise for deletes and inserts, backed by set release
+                I_INDEX.set(ia, Math.max(0, iIndex - mda));
+                D_ARR.setRelease(this, newDa);
 
                 return item;
             }finally {
@@ -231,6 +232,12 @@ public class LBBoundedPQ<T> implements Heap<T> {
         return list;
     }
 
+    DeleteArray<T> loDArr() {
+        return (DeleteArray<T>) D_ARR.getAcquire(this);
+    }
+
+
+
     InsertArray<T> insertArray() {
         return insertArray;
     }
@@ -248,7 +255,7 @@ public class LBBoundedPQ<T> implements Heap<T> {
         return ((Comparable<T>) a).compareTo(b);
     }
 
-    boolean isFreezingOrFrozen(DeleteArray.State s) {
+    boolean isMerging(DeleteArray.State s) {
         return s == MERGING;
     }
 
@@ -324,10 +331,15 @@ public class LBBoundedPQ<T> implements Heap<T> {
         int loIndex() {
             return (int) I_INDEX.getAcquire(this);
         }
+
+        int lpIndex() {
+            return (int) I_INDEX.get(this);
+        }
     }
 
     private static final VarHandle I_INDEX;
     private static final VarHandle STATUS;
+    private static final VarHandle D_ARR;
     private static final VarHandle MERGE;
 
     static {
@@ -335,6 +347,7 @@ public class LBBoundedPQ<T> implements Heap<T> {
         try{
             I_INDEX = l.findVarHandle(InsertArray.class, "index", int.class);
             STATUS = l.findVarHandle(DeleteArray.class, "status", Status.class);
+            D_ARR = l.findVarHandle(LBBoundedPQ.class, "deleteArray", DeleteArray.class);
             MERGE = l.findVarHandle(DeleteArray.class, "mergeCount", int.class);
         }catch (Exception e) {
             throw new RuntimeException(e);
