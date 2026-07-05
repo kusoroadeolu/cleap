@@ -1,18 +1,18 @@
 package io.github.kusoroadeolu.cleap.stress;
 
-import io.github.kusoroadeolu.cleap.Heap;
-import io.github.kusoroadeolu.cleap.bounded.LBBoundedPQ;
-import io.github.kusoroadeolu.cleap.experimental.OptimisticConcurrentHeap;
+import io.github.kusoroadeolu.cleap.bounded.ElimLBBoundedPQ;
 import org.openjdk.jcstress.annotations.*;
 import org.openjdk.jcstress.infra.results.II_Result;
 import org.openjdk.jcstress.infra.results.I_Result;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.openjdk.jcstress.annotations.Expect.ACCEPTABLE;
 import static org.openjdk.jcstress.annotations.Expect.ACCEPTABLE_INTERESTING;
@@ -24,13 +24,13 @@ public class LBPQStress {
     @State
     //Assert no writes are lost
     public static class NoLostWrites {
-        private LBBoundedPQ<Integer> heap;
+        private ElimLBBoundedPQ<Integer> heap;
         private Set<Integer> seen;
         private Queue<Integer> queue;
 
 
         public NoLostWrites() {
-            this.heap = new LBBoundedPQ<>(10, 1);
+            this.heap = new ElimLBBoundedPQ<>(10, 1);
             seen = ConcurrentHashMap.newKeySet();
             queue = new ConcurrentLinkedQueue<>();
         }
@@ -93,11 +93,11 @@ public class LBPQStress {
     @State
     //If a merge is necessary, both values do not return null
     public static class MergeNoNull {
-        private LBBoundedPQ<Integer> heap;
+        private ElimLBBoundedPQ<Integer> heap;
 
 
         public MergeNoNull() {
-            this.heap = new LBBoundedPQ<>(100, 1);
+            this.heap = new ElimLBBoundedPQ<>(100, 1);
             for (int i = 0; i < 15; ++i) {
                 heap.add(ThreadLocalRandom.current().nextInt(100));
             }

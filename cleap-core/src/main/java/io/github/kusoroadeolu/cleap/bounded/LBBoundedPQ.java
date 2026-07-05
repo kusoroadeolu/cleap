@@ -265,6 +265,19 @@ public class LBBoundedPQ<T> implements Heap<T> {
         return insertArray.loIndex() + (da.size() - da.status.index);
     }
 
+    @Override
+    public void clear() {
+        var ia = insertArray;
+        ia.rwLock.writeLock().lock();
+        try {
+            for (;;) {
+                if (poll() == null) break;
+            }
+        }finally {
+            ia.rwLock.writeLock().unlock();
+        }
+    }
+
     static class DeleteArray<T> {
         final T[] items;
         final int capacity;

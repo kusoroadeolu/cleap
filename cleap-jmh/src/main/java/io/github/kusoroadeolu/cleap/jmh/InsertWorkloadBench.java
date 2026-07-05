@@ -1,7 +1,9 @@
 package io.github.kusoroadeolu.cleap.jmh;
 
 import io.github.kusoroadeolu.cleap.Heap;
+import io.github.kusoroadeolu.cleap.bounded.ElimLBBoundedPQ;
 import io.github.kusoroadeolu.cleap.bounded.LBBoundedPQ;
+import io.github.kusoroadeolu.cleap.bounded.LockedPQ;
 import io.github.kusoroadeolu.cleap.experimental.PIPQ;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
@@ -12,7 +14,7 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
-@BenchmarkMode(Mode.Throughput)
+@BenchmarkMode(Mode.SampleTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @State(Scope.Benchmark)
 @Warmup(iterations = 10, time = 1)
@@ -34,16 +36,21 @@ public class InsertWorkloadBench {
         InsertWorkloadBench.fourThreads      STA  thrpt   30  2.983 ± 0.750  ops/us
         Here we can see that the null -> acquire lock actually has better thrpt across all thread counts
     * */
-    @Param({"PIPQ"}) //JDK, Optimistic
+    @Param({"ELB"})
     private String type;
 
     @Setup
     public void setup() {
         queue = switch (type) {
-            case "JDK" -> new JDKHeap<>();
-            case "PIPQ" -> new PIPQ<>();
+            case "LOCK" -> new LockedPQ<>(10000);
+            case "LB" -> new LBBoundedPQ<>(10000);
+            case "ELB" -> new ElimLBBoundedPQ<>(10000);
+
             default -> throw new RuntimeException();
         };
+
+        for (int i = 0; i < 1000; ++i) queue.add(ThreadLocalRandom.current().nextInt(1_000_000));
+
     }
 
     @TearDown(Level.Iteration)
@@ -51,12 +58,6 @@ public class InsertWorkloadBench {
         queue.clear();
     }
 
-
-    @Threads(4)
-    @Benchmark
-    public void fourThreads(Blackhole bh) {
-        doWork(bh);
-    }
 
     @Threads(8)
     @Benchmark

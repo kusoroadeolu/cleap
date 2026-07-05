@@ -1,7 +1,9 @@
 package io.github.kusoroadeolu.cleap.jmh;
 
 import io.github.kusoroadeolu.cleap.Heap;
+import io.github.kusoroadeolu.cleap.bounded.ElimLBBoundedPQ;
 import io.github.kusoroadeolu.cleap.bounded.LBBoundedPQ;
+import io.github.kusoroadeolu.cleap.bounded.LockedPQ;
 import io.github.kusoroadeolu.cleap.experimental.PIPQ;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
@@ -82,7 +84,7 @@ MixedWorkloadBench.fourThreads       JDK  thrpt   30  18.096 ± 0.280  ops/us
 public class MixedWorkloadBench {
     private Heap<Integer> queue;
 
-    @Param({"LB"})
+    @Param({"ELB"})
     private String type;
 
     @State(Scope.Thread)
@@ -93,12 +95,15 @@ public class MixedWorkloadBench {
     @Setup
     public void setup() {
         queue = switch (type) {
-            case "JDK" -> new JDKHeap<>();
-            case "LB" -> new LBBoundedPQ<>(1000);
+            case "LOCK" -> new LockedPQ<>(10000);
+            case "LB" -> new LBBoundedPQ<>(10000);
+            case "ELB" -> new ElimLBBoundedPQ<>(10000);
             default -> throw new RuntimeException();
         };
+
+        for (int i = 0; i < 1000; ++i) queue.add(ThreadLocalRandom.current().nextInt(1_000_000));
     }
-//
+
 //    @TearDown(Level.Iteration)
 //    public void after() {
 //        queue.clear();
