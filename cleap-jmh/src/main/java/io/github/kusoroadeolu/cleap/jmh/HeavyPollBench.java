@@ -4,6 +4,7 @@ import io.github.kusoroadeolu.cleap.Heap;
 import io.github.kusoroadeolu.cleap.bounded.ElimLBBoundedPQ;
 import io.github.kusoroadeolu.cleap.bounded.LBBoundedPQ;
 import io.github.kusoroadeolu.cleap.bounded.LockedPQ;
+import io.github.kusoroadeolu.cleap.bounded.OrderedBoundedPQ;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
 import org.openjdk.jmh.profile.JavaFlightRecorderProfiler;
@@ -23,7 +24,7 @@ import java.util.concurrent.TimeUnit;
 public class HeavyPollBench {
     private Heap<Integer> queue;
 
-    @Param({ "ELB"})
+    @Param({"LB"})
     private String type;
 
     @State(Scope.Thread)
@@ -38,7 +39,7 @@ public class HeavyPollBench {
         queue = switch (type) {
             case "LOCK" -> new LockedPQ<>(10000);
             case "LB" -> new LBBoundedPQ<>(10000);
-            case "ELB" -> new ElimLBBoundedPQ<>(10000);
+            case "ELB" -> new OrderedBoundedPQ<>(10000);
 
             default -> throw new RuntimeException();
         };
@@ -52,18 +53,17 @@ public class HeavyPollBench {
 //        queue.clear();
 //    }
 
-    @Threads(4)
-    @Benchmark
-    public void fourThreads(Blackhole bh, ThreadState ts) {
-        doWork(bh, ts);
-    }
-
-//    @Threads(8)
+//    @Threads(4)
 //    @Benchmark
-//    public void eightThreads(Blackhole bh, ThreadState ts) {
+//    public void fourThreads(Blackhole bh, ThreadState ts) {
 //        doWork(bh, ts);
 //    }
 
+    @Threads(8)
+    @Benchmark
+    public void eightThreads(Blackhole bh, ThreadState ts) {
+        doWork(bh, ts);
+    }
 
     private void doWork(Blackhole bh, ThreadState ts) {
         int next = ts.nextInt();

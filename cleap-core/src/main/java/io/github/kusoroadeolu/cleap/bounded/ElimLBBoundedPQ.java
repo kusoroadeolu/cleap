@@ -21,6 +21,9 @@ public class ElimLBBoundedPQ<T> implements Heap<T> {
     private final int capacity;
     private final int maxDaCapacity;
     private final int slack;
+    static final int FREE = -1;
+    private final AtomicInteger elimLock = new AtomicInteger(FREE);
+    final AtomicReferenceArray<Result> array = new AtomicReferenceArray<>(NCPU);
     static final int NCPU = Runtime.getRuntime().availableProcessors();
 
     public ElimLBBoundedPQ(int capacity) {
@@ -86,113 +89,113 @@ public class ElimLBBoundedPQ<T> implements Heap<T> {
         }
     }
 
-    static final int MAX_SPINS = 1000;
+    static final int SLOT_SPINS = 250;
+    static final int HALF = NCPU / 2;
 
     @Override
     public T poll() {
         var ia = insertArray;
+        Result result = null;
         outer: for (;;) {
-            var da = deleteArray;
+            var da = loDArr();
             int daCap;
             int iIndex;
             int daIndex;
-            var lock = da.lock;
-            Result result = new Result();
-
+            var lock = this.elimLock;
             for (;;) {
-                if (da.state == State.DEAD) continue outer;
-
                 daCap = da.capacity;
                 iIndex = ia.loIndex();
                 daIndex = da.dIndex;
                 boolean noElems = daIndex == daCap;
                 boolean isEmpty = noElems && iIndex == 0;
+                boolean free = lock.getAcquire() == FREE;
 
-                if (isEmpty) return null;
+                if (free && isEmpty) return null;
 
-                var arena = da.array;
-                if (lock.getAcquire() == DeleteArray.FREE && lock.getAndIncrement() == DeleteArray.FREE) {
-                    daIndex = (int) D_INDEX.get(da);
-                    iIndex = ia.loIndex();
+                var arena = array;
+                if (free && lock.getAndIncrement() == FREE) {
+                    try {
+                        da = (DeleteArray<T>) D_ARR.get(this);
+                        daIndex = (int) D_INDEX.get(da);
+                        daCap = da.capacity;
+                        iIndex = ia.loIndex();
 
-//                    noElems = daIndex == daCap;
-//                    isEmpty = noElems && iIndex == 0;
-//
-//                    if (isEmpty) return null;
+                        noElems = daIndex == daCap;
+                        isEmpty = noElems && iIndex == 0;
 
-                    T t = null;
-                    if (noElems || da.mergeCount >= slack) {
-                        System.out.println("Before merge");
-                        da = merge(ia, da);
-                        daIndex = 0;
-                        lock = da.lock;
-                        System.out.println("After merge");
-//                        t = da.items[0];
-//                        D_INDEX.setRelease(da, 1); //Made visible by write to state (for deletes) and lock for inserts
-//                        lock = da.lock;
-//                        daIndex = 1;
-                    } else{
-                        t = da.items[daIndex++];
-                        D_INDEX.setRelease(da, daIndex);
-                    }
+                        if (isEmpty) return null;
 
-                    for (int i = 0; i < NCPU; ++i) {
-                        var r = arena.getAcquire(i);
-                        if (r == null || !arena.compareAndSet(i, r ,Result.waiting())) continue;
-
-                        if (daIndex == da.capacity) {
-                            if (ia.loIndex() == 0) r.item = Result.empty();
-                            else r.item = Result.retry();
+                        T t;
+                        if (noElems || da.mergeCount >= slack) {
+                            da = merge(ia, da);
+                            D_INDEX.setRelease(da, 1); //Made visible by write to state (for deletes) and lock for inserts
+                            daIndex = 1;
+                            t = da.items[0];
                         } else {
-                            r.item = da.items[daIndex++];
+                            t = da.items[daIndex++];
                             D_INDEX.setRelease(da, daIndex);
                         }
 
-                        arena.setRelease(i, null);
+                        for (int i = 0; i < NCPU; ++i) {
+                            var r = arena.getAcquire(i);
+                            if (r == null || !arena.compareAndSet(i, r, Result.waiting())) continue;
+
+                            if (daIndex == da.capacity) {
+                                if (ia.loIndex() == 0) r.item = Result.empty();
+                                else r.item = Result.retry();
+                            } else {
+                                r.item = da.items[daIndex++];
+                                D_INDEX.setRelease(da, daIndex);
+                            }
+
+                            arena.setRelease(i, null);
+                        }
+
+                        return t;
+                    }finally {
+                        lock.setRelease(FREE);
                     }
-                    lock.setRelease(DeleteArray.FREE);
-                    return t;
                 }
 
-//                int half = NCPU / 2;
-//                int slotSpins = MAX_SPINS / half;
-//                inner: for (int i = 0 ; i < half; ++i) {
-//                    if (da.state == State.DEAD) continue outer;
-//
-//                    int index = ThreadLocalRandom.current().nextInt(NCPU);
-//                    int spins = 0;
-//
-//                    if (!arena.compareAndSet(index, null ,result)) continue;
-//
-//                    for (;;) {
-//                        if (++spins >= slotSpins) {
-//                            if (arena.compareAndSet(index, result, null)) continue inner;
-//
-//                            while (arena.getAcquire(index) == Result.waiting() && result.item == null) Thread.onSpinWait();
-//
-//                            if (result.item == Result.retry()) {
-//                                result.item = null;
-//                                continue outer;
-//                            }
-//
-//                            return result.item == Result.empty() ? null : (T) result.item;
-//                        } else if (arena.getAcquire(index) != result || result.item != null) {
-//
-//                            while (arena.getAcquire(index) == Result.waiting() && result.item == null) Thread.onSpinWait();
-//
-//
-//                            if (result.item == Result.retry()) {
-//                                result.item = null;
-//                                continue outer;
-//                            }
-//
-//                            return result.item == Result.empty() ? null : (T) result.item;
-//                        }
-//                        //Need to include these extra result checks otherwise, we might loop 4ever
-//
-//                        Thread.onSpinWait();
-//                    }
-//                }
+                if (result == null) result = new Result();
+
+                inner: for (int i = 0 ; i < HALF; ++i) {
+                    int index = ThreadLocalRandom.current().nextInt(NCPU);
+                    int spins = 0;
+
+                    if (!arena.compareAndSet(index, null ,result)) continue;
+
+                    for (;;) {
+                        if (++spins >= SLOT_SPINS) {
+                            if (arena.compareAndSet(index, result, null)) continue inner;
+
+                            while (arena.getAcquire(index) == Result.waiting() && result.item == null) Thread.onSpinWait();
+
+                            if (result.item == Result.retry()) {
+                                result.item = null;
+                                continue outer;
+                            }
+
+                            return result.item == Result.empty() ? null : (T) result.item;
+                        } else if (arena.getAcquire(index) != result || result.item != null) {
+
+                            while (arena.getAcquire(index) == Result.waiting() && result.item == null) Thread.onSpinWait();
+
+
+                            if (result.item == Result.retry()) {
+                                result.item = null;
+                                continue outer;
+                            }
+
+                            return result.item == Result.empty() ? null : (T) result.item;
+                        }
+                        //Need to include these extra result checks otherwise, we might loop 4ever
+
+                        Thread.onSpinWait();
+                    }
+                }
+
+                continue outer;
 
             }
         }
@@ -229,10 +232,8 @@ public class ElimLBBoundedPQ<T> implements Heap<T> {
 
                 //For inserts backed by exclusive lock, otherwise for deletes and inserts, backed by status write
 
-                newDa.lock.setPlain(0);
-                D_ARR.set(this, newDa);
                 I_INDEX.set(ia, Math.max(0, iIndex - mda));
-                da.state = State.DEAD;
+                D_ARR.setRelease(this, newDa);
                 return newDa;
             }finally {
                 lock.unlock();
@@ -310,12 +311,9 @@ public class ElimLBBoundedPQ<T> implements Heap<T> {
     }
 
     public static class DeleteArray<T> {
-        static final int FREE = -1;
-        volatile State state = State.NONE;
         public final T[] items;
         final int capacity;
-        final AtomicInteger lock = new AtomicInteger(FREE);
-        final AtomicReferenceArray<Result> array = new AtomicReferenceArray<>(NCPU);
+
 
         volatile int dIndex;
         volatile int mergeCount;
@@ -331,8 +329,6 @@ public class ElimLBBoundedPQ<T> implements Heap<T> {
             return capacity - dIndex;
         }
     }
-
-    enum State{NONE, DEAD}
 
     static class Result {
         Object item;

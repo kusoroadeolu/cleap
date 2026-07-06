@@ -1,0 +1,21 @@
+package io.github.kusoroadeolu.cleap.bounded;
+
+import org.junit.jupiter.api.Test;
+
+import java.util.Arrays;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+class OrderedBoundedPQTest {
+
+    @Test
+    void mergeFlow() {
+        var pq = new OrderedBoundedPQ<Integer>(20);
+        pq.add(5); pq.add(1); pq.add(2); pq.add(7); pq.add(0);
+
+        var q = pq.poll();
+        System.out.println(pq.deleteArray);
+        System.out.println(Arrays.toString(pq.queue));
+        assertEquals(0, q);
+    }
+}

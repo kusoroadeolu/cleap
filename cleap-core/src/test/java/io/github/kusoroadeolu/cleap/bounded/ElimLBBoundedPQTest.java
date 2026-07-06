@@ -38,8 +38,7 @@ class ElimLBBoundedPQTest {
 
         Integer polled = pq.poll();
         Integer polled1 = pq.poll();
-        System.out.println("Delete array: " + Arrays.toString(pq.deleteArray().items));
-        assertEquals(9, pq.deleteArray().size());
+        assertEquals(8, pq.deleteArray().size());
         assertNotNull(polled1);
     }
 
