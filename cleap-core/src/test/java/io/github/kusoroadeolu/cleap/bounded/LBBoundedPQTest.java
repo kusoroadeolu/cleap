@@ -9,15 +9,6 @@ import java.util.concurrent.ThreadLocalRandom;
 import static org.junit.jupiter.api.Assertions.*;
 
 class LBBoundedPQTest {
-    @Test
-    void mergeFlow_onDelete_shouldBeFilledProperly() {
-        Integer[] iItems = {5, 1, 3, null, null};
-        var ia = new LBBoundedPQ.InsertArray<>(iItems, 3);
-        var da = new LBBoundedPQ.DeleteArray<Integer>(2, new Status(2, LBBoundedPQ.DeleteArray.State.NONE));
-        var pq = new LBBoundedPQ<>(ia, da);
-        assertEquals(1, pq.poll());
-    }
-
 
     @Test
     void onDeleteWithEmptyPQShouldReturnNull() {

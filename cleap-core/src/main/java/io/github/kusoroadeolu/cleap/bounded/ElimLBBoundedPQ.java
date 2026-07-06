@@ -58,10 +58,11 @@ public class ElimLBBoundedPQ<T> implements Heap<T> {
         int capacity = this.capacity;
         lock.lock();
         try {
-            int index = ia.loIndex();
+            var da = loDArr();
+            int index = da.loIIndex();
 
             if (index == capacity) return false;
-            var da = loDArr();
+
             int daIndex;
             int daCap;
             for (;;) {
@@ -74,8 +75,8 @@ public class ElimLBBoundedPQ<T> implements Heap<T> {
                 int total = index + (daCap - daIndex);
 
                 if (total >= capacity) return false;
-                else if (I_INDEX.compareAndSet(ia, index, next)) break;
-                else index = ia.loIndex(); //re-read
+                else if (I_INDEX.compareAndSet(da, index, next)) break;
+                else index = da.loIIndex(); //re-read
             }
 
             ia.items[index] = t;
@@ -104,21 +105,23 @@ public class ElimLBBoundedPQ<T> implements Heap<T> {
             var lock = this.elimLock;
             for (;;) {
                 daCap = da.capacity;
-                iIndex = ia.loIndex();
+                iIndex = da.loIIndex();
                 daIndex = da.dIndex;
                 boolean noElems = daIndex == daCap;
                 boolean isEmpty = noElems && iIndex == 0;
-                boolean free = lock.getAcquire() == FREE;
 
-                if (free && isEmpty) return null;
+
+                if (isEmpty) return null;
 
                 var arena = array;
+
+                boolean free = lock.getAcquire() == FREE;
                 if (free && lock.getAndIncrement() == FREE) {
                     try {
                         da = (DeleteArray<T>) D_ARR.get(this);
                         daIndex = (int) D_INDEX.get(da);
                         daCap = da.capacity;
-                        iIndex = ia.loIndex();
+                        iIndex = da.loIIndex();
 
                         noElems = daIndex == daCap;
                         isEmpty = noElems && iIndex == 0;
@@ -141,7 +144,7 @@ public class ElimLBBoundedPQ<T> implements Heap<T> {
                             if (r == null || !arena.compareAndSet(i, r, Result.waiting())) continue;
 
                             if (daIndex == da.capacity) {
-                                if (ia.loIndex() == 0) r.item = Result.empty();
+                                if (da.loIIndex() == 0) r.item = Result.empty();
                                 else r.item = Result.retry();
                             } else {
                                 r.item = da.items[daIndex++];
@@ -210,7 +213,7 @@ public class ElimLBBoundedPQ<T> implements Heap<T> {
                 var dItems = da.items;
                 var cmp = nullReverseComparator;
                 var mda = maxDaCapacity;
-                int iIndex = ia.lpIndex(); //start index for insert array (val at this index is always null)
+                int iIndex = da.lpIIndex(); //start index for insert array (val at this index is always null)
                 int dIndex = da.dIndex; //start index for delete array
                 int dSize = da.capacity;
                 for (int i = dIndex; i < dSize; ++i) {
@@ -225,6 +228,7 @@ public class ElimLBBoundedPQ<T> implements Heap<T> {
                     var v = iItems[i];
                     newDa.items[j] = v;
                     iItems[i] = null;
+                    --iIndex;
                 }
 
                 //increment to ensure no one can hold this acquire this after we make this visible.
@@ -232,7 +236,7 @@ public class ElimLBBoundedPQ<T> implements Heap<T> {
 
                 //For inserts backed by exclusive lock, otherwise for deletes and inserts, backed by status write
 
-                I_INDEX.set(ia, Math.max(0, iIndex - mda));
+                I_INDEX.set(newDa, Math.max(0, iIndex));
                 D_ARR.setRelease(this, newDa);
                 return newDa;
             }finally {
@@ -255,7 +259,7 @@ public class ElimLBBoundedPQ<T> implements Heap<T> {
                 list.add(da.items[i]);
             }
 
-            int upto = ia.index;
+            int upto = da.iIndex;
             for (int i = 0; i < upto; ++i) {
                 list.add(ia.items[i]);
             }
@@ -294,7 +298,7 @@ public class ElimLBBoundedPQ<T> implements Heap<T> {
     @Override
     public int size() {
         var da = deleteArray;
-        return insertArray.loIndex() + da.size();
+        return da.loIIndex() + da.size();
     }
 
     @Override
@@ -316,6 +320,7 @@ public class ElimLBBoundedPQ<T> implements Heap<T> {
 
 
         volatile int dIndex;
+        private volatile int iIndex;
         volatile int mergeCount;
 
         DeleteArray(int capacity) {
@@ -323,6 +328,15 @@ public class ElimLBBoundedPQ<T> implements Heap<T> {
             else items = (T[]) new Object[capacity];
             this.capacity = capacity;
 
+        }
+
+
+        int loIIndex() {
+            return (int) I_INDEX.getAcquire(this);
+        }
+
+        int lpIIndex() {
+            return (int) I_INDEX.get(this);
         }
 
         int size() {
@@ -367,7 +381,6 @@ public class ElimLBBoundedPQ<T> implements Heap<T> {
 
     static class InsertArray<T> {
         private final T[] items;
-        private volatile int index;
         private final ReadWriteLock rwLock;
 
         public InsertArray(int capacity) {
@@ -375,19 +388,6 @@ public class ElimLBBoundedPQ<T> implements Heap<T> {
             this.rwLock = new ReentrantReadWriteLock();
         }
 
-        public InsertArray(T[] items, int index) {
-            this.items = items;
-            this.index = index;
-            this.rwLock = new ReentrantReadWriteLock();
-        }
-
-        int loIndex() {
-            return (int) I_INDEX.getAcquire(this);
-        }
-
-        int lpIndex() {
-            return (int) I_INDEX.get(this);
-        }
     }
 
     private static final VarHandle I_INDEX;
@@ -398,7 +398,7 @@ public class ElimLBBoundedPQ<T> implements Heap<T> {
     static {
         var l = MethodHandles.lookup();
         try{
-            I_INDEX = l.findVarHandle(InsertArray.class, "index", int.class);
+            I_INDEX = l.findVarHandle(DeleteArray.class, "iIndex", int.class);
             D_INDEX = l.findVarHandle(DeleteArray.class, "dIndex", int.class);
             D_ARR = l.findVarHandle(ElimLBBoundedPQ.class, "deleteArray", DeleteArray.class);
             MERGE = l.findVarHandle(DeleteArray.class, "mergeCount", int.class);

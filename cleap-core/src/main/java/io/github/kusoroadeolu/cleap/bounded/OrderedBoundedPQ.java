@@ -5,17 +5,18 @@ import io.github.kusoroadeolu.cleap.Heap;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.Arrays;
+import java.util.Comparator;
+import java.util.PriorityQueue;
 
 public class OrderedBoundedPQ<T> implements Heap<T> {
-    Object[] queue;
+    final FixedPriorityQueue<T> pq;
     final Object lock;
     final int capacity;
     final int maxDaCapacity;
     DeleteArray<T> deleteArray;
-    volatile State state = State.NONE;
 
     public OrderedBoundedPQ(int capacity) {
-        this.queue = new Object[capacity];
+        this.pq = new FixedPriorityQueue<>(capacity);
         lock = new Object();
         this.capacity = capacity;
         this.maxDaCapacity = Math.max(1, (int) (0.1 * capacity));
@@ -27,11 +28,11 @@ public class OrderedBoundedPQ<T> implements Heap<T> {
         synchronized (lock) {
             var da = deleteArray;
             int size = (int) I_INDEX.get(da);
+
             int dSize = (int) D_INDEX.getAcquire(da);
-            var q = queue;
-            if ((dSize + size) == capacity) return false;
-            siftUpComparable(size, t, q);
-            I_INDEX.getAndAdd(da, 1);
+            if ((dSize + size) >= capacity) return false;
+            pq.add(t, size);
+            I_INDEX.setRelease(da, 1);
             return true;
         }
     }
@@ -44,14 +45,14 @@ public class OrderedBoundedPQ<T> implements Heap<T> {
     @Override
     public T poll() {
         DeleteArray<T> da = null;
-        try {
 
             for (;;) {
-                var s = STATE.getAcquire(this);
                 da = deleteArray;
+                var s = loState(da);
 
                 if (s != State.NONE) {
-                    while (STATE.getAcquire(this) == State.MERGING) Thread.onSpinWait();
+                    if (s == State.MERGED) continue;
+                    while (loState(da) == State.MERGING) Thread.onSpinWait();
                     continue;
                 }
 
@@ -66,34 +67,39 @@ public class OrderedBoundedPQ<T> implements Heap<T> {
 
                 else if (idx == 0) return null;
 
-                if (STATE.getAcquire(this) != State.NONE || !STATE.compareAndSet(this, State.NONE, State.MERGING)) {
-                    while (STATE.getAcquire(this) == State.MERGING) Thread.onSpinWait();
+                if ((s = loState(da)) != State.NONE || !casState(s, State.MERGING, da)) {
+                    if (s == State.MERGED) continue;
+                    while (loState(da) == State.MERGING) Thread.onSpinWait();
                     continue;
                 }
 
 
+            try {
                 synchronized (lock) {
-                    int iIdx = (int) I_INDEX.get(da);
-                    Object[] iq = queue;
+
+                    int iIdx = (int) I_INDEX.get(da); //value at this idx is always null (so this is always the size of the queue)
+                    var pq = this.pq;
+
                     int newDaCap = Math.min(iIdx, maxDaCapacity);
                     Object[] dq = new Object[newDaCap];
-                    Object[] newIq = new Object[capacity];
-                    for (int i = 0, j = 0; i < iIdx; ++i) {
-                        if (i < newDaCap) dq[i] = iq[i];
-                        else newIq[j++] = iq[i];
+
+
+                    for (int i = 0; i < newDaCap; ++i) {
+                        dq[i] = pq.poll(--iIdx);
                     }
 
-                    var newDa = new DeleteArray<T>(dq, iIdx - newDaCap, 1);
-                    queue = newIq;
+                    var newDa = new DeleteArray<T>(dq, iIdx, 1);
                     deleteArray = newDa;
-                    STATE.setRelease(this, State.NONE);
                     return (T) dq[0];
                 }
 
+            }finally {
+                STATE.setRelease(da, State.MERGED);
             }
-        }catch (RuntimeException e) {
-            throw new RuntimeException(da.toString());
-        }
+
+
+            }
+
     }
 
     @Override
@@ -101,23 +107,20 @@ public class OrderedBoundedPQ<T> implements Heap<T> {
         return 0;
     }
 
-    void siftUpComparable(int k, T x, Object[] es) {
-        Comparable<? super T> key = (Comparable<? super T>) x;
-        while (k > 0) {
-            int parent = (k - 1) >>> 1;
-            Object e = es[parent];
-            if (e == null || key.compareTo((T) e) >= 0)
-                break;
-            es[k] = e;
-            k = parent;
-        }
-        es[k] = key;
+
+    State loState(DeleteArray<T> da) {
+        return (State) STATE.getAcquire(da);
+    }
+
+    boolean casState(State a, State b, DeleteArray<T> da) {
+        return STATE.compareAndSet(da, a, b);
     }
 
 
     public static class DeleteArray<T> {
         final Object[] items;
         final int capacity;
+        volatile State state = State.NONE;
         volatile int deleteIndex = 0;
         volatile int insertIndex = 0;
 
@@ -150,7 +153,9 @@ public class OrderedBoundedPQ<T> implements Heap<T> {
         }
     }
 
-    enum State {NONE, MERGING}
+    enum State {MERGING, NONE, MERGED}
+
+    record Status (State state) {}
 
 
     private static final VarHandle D_INDEX;
@@ -163,9 +168,72 @@ public class OrderedBoundedPQ<T> implements Heap<T> {
         try{
             D_INDEX = l.findVarHandle(DeleteArray.class, "deleteIndex", int.class);
             I_INDEX = l.findVarHandle(DeleteArray.class, "insertIndex", int.class);
-            STATE = l.findVarHandle(OrderedBoundedPQ.class, "state", State.class);
+            STATE = l.findVarHandle(DeleteArray.class, "state", State.class);
         }catch (Exception e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    static class FixedPriorityQueue<T> {
+        Object[] queue;
+        int size;
+
+        public FixedPriorityQueue(int capacity) {
+            this.queue = new Object[capacity];
+        }
+
+        public void add(T t, int size) {
+            int i = size;
+            siftUpComparable(i, t, queue);
+            this.size++;
+        }
+
+        public T poll(int size) {
+            final Object[] es;
+            final T result;
+
+            if ((result = (T) ((es = queue)[0])) != null) {
+                final int n;
+                final T x = (T) es[(n = size)];
+                this.size--;
+                es[n] = null;
+                if (n > 0) {
+                    siftDownComparable(0, x, es, n);
+                }
+            }
+            return result;
+        }
+
+        private static <T> void siftDownComparable(int k, T x, Object[] es, int n) {
+
+                Comparable<? super T> key = (Comparable<? super T>)x;
+                int half = n >>> 1;           // loop while a non-leaf
+                while (k < half) {
+                    int child = (k << 1) + 1; // assume left child is least
+                    Object c = es[child];
+                    int right = child + 1;
+                    if (right < n && ((Comparable<? super T>) c).compareTo((T) es[right]) > 0)
+                        c = es[child = right];
+                    if (key.compareTo((T) c) <= 0)
+                        break;
+                    es[k] = c;
+                    k = child;
+                }
+                es[k] = key;
+
+        }
+
+        void siftUpComparable(int k, T x, Object[] es) {
+            Comparable<? super T> key = (Comparable<? super T>) x;
+            while (k > 0) {
+                int parent = (k - 1) >>> 1;
+                Object e = es[parent];
+                if (e == null || key.compareTo((T) e) >= 0)
+                    break;
+                es[k] = e;
+                k = parent;
+            }
+            es[k] = key;
         }
     }
 }

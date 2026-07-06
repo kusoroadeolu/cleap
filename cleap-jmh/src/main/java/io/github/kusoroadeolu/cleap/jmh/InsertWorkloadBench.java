@@ -4,6 +4,7 @@ import io.github.kusoroadeolu.cleap.Heap;
 import io.github.kusoroadeolu.cleap.bounded.ElimLBBoundedPQ;
 import io.github.kusoroadeolu.cleap.bounded.LBBoundedPQ;
 import io.github.kusoroadeolu.cleap.bounded.LockedPQ;
+import io.github.kusoroadeolu.cleap.bounded.OrderedBoundedPQ;
 import io.github.kusoroadeolu.cleap.experimental.PIPQ;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
@@ -44,7 +45,7 @@ public class InsertWorkloadBench {
         queue = switch (type) {
             case "LOCK" -> new LockedPQ<>(10000);
             case "LB" -> new LBBoundedPQ<>(10000);
-            case "ELB" -> new ElimLBBoundedPQ<>(10000);
+            case "ELB" -> new OrderedBoundedPQ<>(10000);
 
             default -> throw new RuntimeException();
         };

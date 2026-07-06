@@ -68,9 +68,9 @@ public class LBBoundedPQ<T> implements Heap<T> {
         lock.lock();
         try {
             var da = loDArr();
-            int index = da.loIndex();
+            int iIndex = da.loIIndex();
 
-            if (index == capacity) return false;
+            if (iIndex == capacity) return false;
 
             Status daStatus;
 
@@ -78,22 +78,22 @@ public class LBBoundedPQ<T> implements Heap<T> {
                 //70, 30
                 //71, 30 -0
                 daStatus = da.status;
-                int daIndex = daStatus.index; // (0, 1, 2, 3), if index is on 2, that means value at 2 hasn't been consumed yet
+                int daIndex = daStatus.dIndex; // (0, 1, 2, 3), if index is on 2, that means value at 2 hasn't been consumed yet
                 int daSize = da.capacity; //10 - 5 = 5
-                int next = index + 1;
-                int total = index + (daSize - daIndex);
+                int next = iIndex + 1;
+                int total = iIndex + (daSize - daIndex);
 
                 if (total >= capacity)return false;
-                else if (I_INDEX.compareAndSet(da, index, next)) break;
-                else index = da.loIndex(); //re-read
+                else if (I_INDEX.compareAndSet(da, iIndex, next)) break;
+                else iIndex = da.loIIndex(); //re-read
             }
 
 
-            ia.items[index] = t;
+            ia.items[iIndex] = t;
             if (da.capacity == 0 || daStatus.state != DeleteArray.State.NONE) return true; //nothing in the D.A or da is freezing, we'll get merged soon
             var lastDaIndex = da.capacity - 1;
             int prio = compare(t, da.items[lastDaIndex]);
-            if (prio < 0) MERGE.getAndAdd(da, 1); //Writes to items is made visible by da status read
+            if (prio < 0) SLACK_COUNT.getAndAdd(da, 1); //Writes to items is made visible by da status read
             return true;
         }finally {
             lock.unlock();
@@ -104,7 +104,7 @@ public class LBBoundedPQ<T> implements Heap<T> {
     public T poll() {
         outer: for (;;) {
             var da = loDArr();
-            int daSize;
+            int daCapacity;
             int seenIndex;
             int daIndex;
             Status daStatus;
@@ -112,7 +112,7 @@ public class LBBoundedPQ<T> implements Heap<T> {
 
             for (;;) {
                 daStatus = da.status;
-                daSize = da.capacity;
+                daCapacity = da.capacity;
 
                 if (isMerging(daStatus.state)) {
                     for (;;) {
@@ -121,17 +121,13 @@ public class LBBoundedPQ<T> implements Heap<T> {
                     }
                 }
 
-                if (daSize == 0) return null; //Otherwise try to start a merge
-
-                seenIndex = da.loIndex();
-
-                daIndex = daStatus.index;
-
-                boolean isEmpty = daIndex == daSize;
+                seenIndex = da.loIIndex();
+                daIndex = daStatus.dIndex;
+                boolean isEmpty = daIndex == daCapacity;
 
                 if (isEmpty && seenIndex == 0) return null; //DA and IA are empty
 
-                boolean shouldMerge = isEmpty || da.mergeCount >= slack;
+                boolean shouldMerge = isEmpty || da.slackCount >= slack;
                 // if , reassign daStatus if the cas succeeds
 
                 Status s;
@@ -159,7 +155,7 @@ public class LBBoundedPQ<T> implements Heap<T> {
                 var cmp = nullReverseComparator;
                 var maxDaCapacity = this.maxDaCapacity;
                 int iIndex = da.lpIndex(); //start index for insert array (val at this index is always null)
-                int dIndex = daStatus.index; //start index for delete array
+                int dIndex = daStatus.dIndex; //start index for delete array
                 int dSize = da.capacity;
                 for (int i = dIndex; i < dSize; ++i) {
                     iItems[iIndex++] = dItems[dIndex];
@@ -218,7 +214,7 @@ public class LBBoundedPQ<T> implements Heap<T> {
 
         ia.rwLock.readLock().lock();
         try {
-            for (int i = da.status.index; i < da.capacity; ++i) {
+            for (int i = da.status.dIndex; i < da.capacity; ++i) {
                 list.add(da.items[i]);
             }
 
@@ -238,7 +234,9 @@ public class LBBoundedPQ<T> implements Heap<T> {
         return (DeleteArray<T>) D_ARR.getAcquire(this);
     }
 
-
+    public int slackCount() {
+        return deleteArray().slackCount;
+    }
 
     InsertArray<T> insertArray() {
         return insertArray;
@@ -264,7 +262,7 @@ public class LBBoundedPQ<T> implements Heap<T> {
     @Override
     public int size() {
         var da = deleteArray;
-        return da.loIndex() + (da.size() - da.status.index);
+        return da.loIIndex() + (da.size() - da.status.dIndex);
     }
 
     @Override
@@ -284,7 +282,7 @@ public class LBBoundedPQ<T> implements Heap<T> {
         final T[] items;
         final int capacity;
         volatile Status status = new Status(0, NONE);
-        volatile int mergeCount;
+        volatile int slackCount;
         volatile int iIndex;
 
         DeleteArray(int capacity) {
@@ -300,14 +298,14 @@ public class LBBoundedPQ<T> implements Heap<T> {
         }
 
         int size() {
-            return capacity - status.index;
+            return capacity - status.dIndex;
         }
 
         boolean casStatus(Status s, Status newS) {
             return STATUS.compareAndSet(this, s, newS);
         }
 
-        int loIndex() {
+        int loIIndex() {
             return (int) I_INDEX.getAcquire(this);
         }
 
@@ -316,18 +314,18 @@ public class LBBoundedPQ<T> implements Heap<T> {
         }
 
         static class Status {
-            private final int index;
+            private final int dIndex;
             private final State state;
 
-            public Status(int index, State state) {
-                this.index = index;
+            public Status(int dIndex, State state) {
+                this.dIndex = dIndex;
                 this.state = state;
             }
 
             @Override
             public String toString() {
                 return "Status{" +
-                        "index=" + index +
+                        "index=" + dIndex +
                         ", state=" + state +
                         '}';
             }
@@ -354,7 +352,7 @@ public class LBBoundedPQ<T> implements Heap<T> {
     private static final VarHandle I_INDEX;
     private static final VarHandle STATUS;
     private static final VarHandle D_ARR;
-    private static final VarHandle MERGE;
+    private static final VarHandle SLACK_COUNT;
 
     static {
         var l = MethodHandles.lookup();
@@ -362,7 +360,7 @@ public class LBBoundedPQ<T> implements Heap<T> {
             I_INDEX = l.findVarHandle(DeleteArray.class, "iIndex", int.class);
             STATUS = l.findVarHandle(DeleteArray.class, "status", Status.class);
             D_ARR = l.findVarHandle(LBBoundedPQ.class, "deleteArray", DeleteArray.class);
-            MERGE = l.findVarHandle(DeleteArray.class, "mergeCount", int.class);
+            SLACK_COUNT = l.findVarHandle(DeleteArray.class, "slackCount", int.class);
         }catch (Exception e) {
             throw new RuntimeException(e);
         }
