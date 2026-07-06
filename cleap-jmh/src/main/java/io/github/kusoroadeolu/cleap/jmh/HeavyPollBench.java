@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit;
 public class HeavyPollBench {
     private Heap<Integer> queue;
 
-    @Param({"LB"})
+    @Param({"LOCK", "ELB", "LB", "OBQ"})
     private String type;
 
     @State(Scope.Thread)
@@ -40,6 +40,8 @@ public class HeavyPollBench {
             case "LOCK" -> new LockedPQ<>(10000);
             case "LB" -> new LBBoundedPQ<>(10000);
             case "ELB" -> new ElimLBBoundedPQ<>(10000);
+            case "OBQ" -> new OrderedBoundedPQ<>(10000);
+
 
             default -> throw new RuntimeException();
         };
@@ -83,3 +85,54 @@ public class HeavyPollBench {
 
     }
 }
+
+/*
+"
+"
+
+Benchmark                            (type)    Mode      Cnt      Score   Error  Units
+HeavyPollBench.eightThreads            LOCK  sample  5960936      1.284 ± 0.017  us/op
+HeavyPollBench.eightThreads:p0.00      LOCK  sample                 ≈ 0          us/op
+HeavyPollBench.eightThreads:p0.50      LOCK  sample                 ≈ 0          us/op
+HeavyPollBench.eightThreads:p0.90      LOCK  sample               0.100          us/op
+HeavyPollBench.eightThreads:p0.95      LOCK  sample               0.100          us/op
+HeavyPollBench.eightThreads:p0.99      LOCK  sample              55.552          us/op
+HeavyPollBench.eightThreads:p0.999     LOCK  sample              78.720          us/op
+HeavyPollBench.eightThreads:p0.9999    LOCK  sample             110.720          us/op
+HeavyPollBench.eightThreads:p1.00      LOCK  sample            5734.400          us/op
+
+HeavyPollBench.eightThreads              LB  sample  6245491     10.909 ± 0.155  us/op
+HeavyPollBench.eightThreads:p0.00        LB  sample                 ≈ 0          us/op
+HeavyPollBench.eightThreads:p0.50        LB  sample               0.400          us/op
+HeavyPollBench.eightThreads:p0.90        LB  sample              30.272          us/op
+HeavyPollBench.eightThreads:p0.95        LB  sample              40.256          us/op
+HeavyPollBench.eightThreads:p0.99        LB  sample              62.656          us/op
+HeavyPollBench.eightThreads:p0.999       LB  sample             375.296          us/op
+HeavyPollBench.eightThreads:p0.9999      LB  sample            5701.632          us/op
+HeavyPollBench.eightThreads:p1.00        LB  sample           21561.344          us/op
+
+HeavyPollBench.eightThreads             ELB  sample  6485655      9.313 ± 0.119  us/op
+HeavyPollBench.eightThreads:p0.00       ELB  sample                 ≈ 0          us/op
+HeavyPollBench.eightThreads:p0.50       ELB  sample               0.400          us/op
+HeavyPollBench.eightThreads:p0.90       ELB  sample              25.888          us/op
+HeavyPollBench.eightThreads:p0.95       ELB  sample              34.944          us/op
+HeavyPollBench.eightThreads:p0.99       ELB  sample              55.744          us/op
+HeavyPollBench.eightThreads:p0.999      ELB  sample             141.312          us/op
+HeavyPollBench.eightThreads:p0.9999     ELB  sample            3964.928          us/op
+HeavyPollBench.eightThreads:p1.00       ELB  sample           27099.136          us/op
+" these are the results
+
+
+* "
+Benchmark                            (type)    Mode      Cnt      Score   Error  Units
+HeavyPollBench.eightThreads             OBQ  sample  5816405      1.955 ± 0.083  us/op
+HeavyPollBench.eightThreads:p0.00       OBQ  sample                 ≈ 0          us/op
+HeavyPollBench.eightThreads:p0.50       OBQ  sample               0.200          us/op
+HeavyPollBench.eightThreads:p0.90       OBQ  sample               0.900          us/op
+HeavyPollBench.eightThreads:p0.95       OBQ  sample               1.300          us/op
+HeavyPollBench.eightThreads:p0.99       OBQ  sample              51.840          us/op
+HeavyPollBench.eightThreads:p0.999      OBQ  sample             107.776          us/op
+HeavyPollBench.eightThreads:p0.9999     OBQ  sample            1513.472          us/op
+HeavyPollBench.eightThreads:p1.00       OBQ  sample           21561.344          us/op
+" this is are the results i got for another pq structure i built
+* */
