@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit;
 public class HeavyPollBench {
     private Heap<Integer> queue;
 
-    @Param({"ELB"})
+    @Param({"LB"})
     private String type;
 
     @State(Scope.Thread)

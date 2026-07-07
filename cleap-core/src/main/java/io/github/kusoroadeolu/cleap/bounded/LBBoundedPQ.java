@@ -13,12 +13,13 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static io.github.kusoroadeolu.cleap.bounded.LBBoundedPQ.DeleteArray.State.MERGING;
+import static io.github.kusoroadeolu.cleap.bounded.LBBoundedPQ.DeleteArray.State.MERGED;
 import static io.github.kusoroadeolu.cleap.bounded.LBBoundedPQ.DeleteArray.State.NONE;
 
 public class LBBoundedPQ<T> implements Heap<T> {
     private final InsertArray<T> insertArray;
     private final Comparator<T> nullReverseComparator; //Packs the bottom of an array with nulls
-    private volatile DeleteArray<T> deleteArray;
+    private DeleteArray<T> deleteArray;
     private final int capacity;
     private final int maxDaCapacity;
     private final int slack;
@@ -67,7 +68,7 @@ public class LBBoundedPQ<T> implements Heap<T> {
         int capacity = this.capacity;
         lock.lock();
         try {
-            var da = loDArr();
+            var da = deleteArray;
             int iIndex = da.loIIndex();
 
             if (iIndex == capacity) return false;
@@ -84,8 +85,8 @@ public class LBBoundedPQ<T> implements Heap<T> {
                 int total = iIndex + (daSize - daIndex);
 
                 if (total >= capacity) return false;
-                else if (I_INDEX.compareAndSet(da, index, next)) break; //linearization point an item has been inserted into the array
-                else index = da.loIIndex(); //re-read with acquire, write to array can't be reordered as the write is dependent on index
+                else if (I_INDEX.compareAndSet(da, iIndex, next)) break; //linearization point an item has been inserted into the array
+                else iIndex = da.loIIndex(); //re-read with acquire, write to array can't be reordered as the write is dependent on index
             }
 
 
@@ -102,30 +103,33 @@ public class LBBoundedPQ<T> implements Heap<T> {
 
     @Override
     public T poll() {
-        outer: for (;;) {
-            var da = loDArr();
+            DeleteArray<T> da;
             int daCapacity;
             int seenIndex;
             int daIndex;
             Status daStatus;
             var ia = insertArray;
 
-            for (;;) {
-                daStatus = da.status;
-                daCapacity = da.capacity;
+            outer: for (;;) {
+                da = (DeleteArray<T>) D_ARR.getOpaque(this); //Use opaque read over plain for a greater chance we'll see the latest (or later) delete array
+                //However if we see an already merged array, the status write ensures we see the delete array backed by the status write
+                daStatus = da.status; //Volatile read (is merged, we'll always see the new delete array)
 
-                if (isMerging(daStatus.state)) {
+                daCapacity = da.capacity;
+                var state = daStatus.state;
+
+                if (state == MERGING) {
                     for (;;) {
-                        if (da != loDArr()) continue outer;
+                        if (da.status.state == MERGED) continue outer;
                         Thread.onSpinWait();
                     }
-                }
+                } else if (state == MERGED) continue;
 
                 seenIndex = da.loIIndex();
                 daIndex = daStatus.dIndex;
                 boolean isEmpty = daIndex == daCapacity;
 
-                if (isEmpty && seenIndex == 0) return null; //DA and IA are empty
+                if (isEmpty && seenIndex == 0) return null; //DA and IA are empty (will never be zero in the presence of merging deletes)
 
                 boolean shouldMerge = isEmpty || da.slackCount >= slack;
                 // if , reassign daStatus if the cas succeeds
@@ -137,7 +141,7 @@ public class LBBoundedPQ<T> implements Heap<T> {
                         break;
                     } else {
                         for (;;) {
-                            if (da != loDArr()) continue outer;
+                            if (da.status.state == MERGED) continue outer;
                             Thread.onSpinWait();
                         }
                     }
@@ -148,7 +152,6 @@ public class LBBoundedPQ<T> implements Heap<T> {
             }
 
             return merge(ia, da, daStatus);
-        }
     }
 
 
@@ -199,13 +202,15 @@ public class LBBoundedPQ<T> implements Heap<T> {
                 iItems[i] = null;
                 --iIndex;
             }
-            I_INDEX.set(newDa, Math.max(0, iIndex));
+
+            I_INDEX.set(newDa, (iIndex = Math.max(0, iIndex)));
 
             T item = newDa.items[0];
             //Writes to this array
             //For inserts backed by exclusive lock, otherwise for deletes and inserts, backed by set release
             //However, they can't modify this as it is prevented by the merging flag
-            D_ARR.setRelease(this, newDa);
+            D_ARR.setOpaque(this, newDa);
+            da.status = new Status(iIndex, MERGED);
             return item;
         }finally {
             lock.unlock();
@@ -236,9 +241,6 @@ public class LBBoundedPQ<T> implements Heap<T> {
         return list;
     }
 
-    DeleteArray<T> loDArr() {
-        return (DeleteArray<T>) D_ARR.getAcquire(this);
-    }
 
     public int slackCount() {
         return deleteArray().slackCount;
@@ -261,14 +263,14 @@ public class LBBoundedPQ<T> implements Heap<T> {
         return ((Comparable<T>) a).compareTo(b);
     }
 
-    boolean isMerging(DeleteArray.State s) {
-        return s == MERGING;
-    }
-
     @Override
     public int size() {
-        var da = deleteArray;
-        return da.loIIndex() + (da.size() - da.status.dIndex);
+        for (;;) {
+            var da = deleteArray;
+            var s = da.status;
+            if (s.state == MERGED) continue;
+            return da.loIIndex() + (da.size() - da.status.dIndex);
+        }
     }
 
     @Override
@@ -346,11 +348,6 @@ public class LBBoundedPQ<T> implements Heap<T> {
 
         public InsertArray(int capacity) {
             this.items = (T[]) new Object[capacity];
-            this.rwLock = new ReentrantReadWriteLock();
-        }
-
-        public InsertArray(T[] items) {
-            this.items = items;
             this.rwLock = new ReentrantReadWriteLock();
         }
     }
