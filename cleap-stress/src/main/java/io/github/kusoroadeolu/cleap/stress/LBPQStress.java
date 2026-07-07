@@ -186,4 +186,46 @@ public class LBPQStress {
             else r.r2 = 1;
         }
     }
+
+
+    @JCStressTest()
+    @Outcome(id = "1", expect = Expect.ACCEPTABLE, desc = "Invariant maintained")
+    @State
+    //Basically ensure a thread never sees zero in the I_INDEX varhandle during a merge
+    public static class BoundedInvariant {
+        private LBBoundedPQ<Integer> heap;
+
+
+        public BoundedInvariant() {
+            this.heap = new LBBoundedPQ<>(2, 1); //This should give a delete cap of 2
+        }
+
+        //One thread should trigger a merge, so one thread should at least valid value
+
+        @Actor
+        public void adder(){
+            heap.add(ThreadLocalRandom.current().nextInt());
+        }
+
+        @Actor
+        public void adder1(){
+            heap.add(ThreadLocalRandom.current().nextInt());
+        }
+        @Actor
+        public void adder2(){
+            heap.add(ThreadLocalRandom.current().nextInt());
+        }
+
+        @Actor
+        public void poller2(){
+            heap.poll();
+
+        }
+
+        @Actor
+        public void arbiter(I_Result r) {
+            r.r1 = heap.size() > 2 ? 0 : 1;
+        }
+    }
 }
+

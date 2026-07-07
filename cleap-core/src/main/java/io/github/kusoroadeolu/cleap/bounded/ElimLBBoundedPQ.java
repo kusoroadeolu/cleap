@@ -66,24 +66,21 @@ public class ElimLBBoundedPQ<T> implements Heap<T> {
             int daIndex;
             int daCap;
             for (;;) {
-                //70, 30
-                //71, 30 -0
-
                 daIndex = da.dIndex; // (0, 1, 2, 3), if index is on 2, that means value at 2 hasn't been consumed yet
                 daCap = da.capacity; //10 - 5 = 5
                 int next = index + 1;
                 int total = index + (daCap - daIndex);
 
                 if (total >= capacity) return false;
-                else if (I_INDEX.compareAndSet(da, index, next)) break;
-                else index = da.loIIndex(); //re-read
+                else if (I_INDEX.compareAndSet(da, index, next)) break; //linearization point an item has been inserted into the array
+                else index = da.loIIndex(); //re-read with acquire, write to array can't be reordered as the write is dependent on index
             }
 
             ia.items[index] = t;
             if (da.capacity == 0 || daIndex == daCap) return true; //nothing in the D.A, we'll get merged on next delete min
             var lastDaIndex = da.capacity - 1;
             int prio = compare(t, da.items[lastDaIndex]);
-            if (prio < 0) MERGE.getAndAdd(da, 1); //Writes to items is made visible by da status read
+            if (prio < 0) SLACK_COUNT.getAndAdd(da, 1); //Writes to items is made visible by da status read
             return true;
         }finally {
             lock.unlock();
@@ -129,7 +126,7 @@ public class ElimLBBoundedPQ<T> implements Heap<T> {
                         if (isEmpty) return null;
 
                         T t;
-                        if (noElems || da.mergeCount >= slack) {
+                        if (noElems || da.slackCount >= slack) {
                             da = merge(ia, da);
                             D_INDEX.setRelease(da, 1); //Made visible by write to state (for deletes) and lock for inserts
                             daIndex = 1;
@@ -321,7 +318,7 @@ public class ElimLBBoundedPQ<T> implements Heap<T> {
 
         volatile int dIndex;
         private volatile int iIndex;
-        volatile int mergeCount;
+        volatile int slackCount;
 
         DeleteArray(int capacity) {
             if (capacity == 0) items = null;
@@ -393,7 +390,7 @@ public class ElimLBBoundedPQ<T> implements Heap<T> {
     private static final VarHandle I_INDEX;
     private static final VarHandle D_INDEX;
     private static final VarHandle D_ARR;
-    private static final VarHandle MERGE;
+    private static final VarHandle SLACK_COUNT;
 
     static {
         var l = MethodHandles.lookup();
@@ -401,7 +398,7 @@ public class ElimLBBoundedPQ<T> implements Heap<T> {
             I_INDEX = l.findVarHandle(DeleteArray.class, "iIndex", int.class);
             D_INDEX = l.findVarHandle(DeleteArray.class, "dIndex", int.class);
             D_ARR = l.findVarHandle(ElimLBBoundedPQ.class, "deleteArray", DeleteArray.class);
-            MERGE = l.findVarHandle(DeleteArray.class, "mergeCount", int.class);
+            SLACK_COUNT = l.findVarHandle(DeleteArray.class, "slackCount", int.class);
         }catch (Exception e) {
             throw new RuntimeException(e);
         }

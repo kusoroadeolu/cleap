@@ -140,3 +140,5 @@ else return value at I
 
 
 
+## LATER THOUGHTS
+- Ditched the buffer approach and the memory footprint goal

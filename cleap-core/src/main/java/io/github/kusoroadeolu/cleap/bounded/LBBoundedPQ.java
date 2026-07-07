@@ -83,9 +83,9 @@ public class LBBoundedPQ<T> implements Heap<T> {
                 int next = iIndex + 1;
                 int total = iIndex + (daSize - daIndex);
 
-                if (total >= capacity)return false;
-                else if (I_INDEX.compareAndSet(da, iIndex, next)) break;
-                else iIndex = da.loIIndex(); //re-read
+                if (total >= capacity) return false;
+                else if (I_INDEX.compareAndSet(da, index, next)) break; //linearization point an item has been inserted into the array
+                else index = da.loIIndex(); //re-read with acquire, write to array can't be reordered as the write is dependent on index
             }
 
 
@@ -147,21 +147,27 @@ public class LBBoundedPQ<T> implements Heap<T> {
                 }
             }
 
-            var lock = ia.rwLock.writeLock();
-            lock.lock();
-            try {
-                var iItems = ia.items;
-                var dItems = da.items;
-                var cmp = nullReverseComparator;
-                var maxDaCapacity = this.maxDaCapacity;
-                int iIndex = da.lpIndex(); //start index for insert array (val at this index is always null)
-                int dIndex = daStatus.dIndex; //start index for delete array
-                int dSize = da.capacity;
-                for (int i = dIndex; i < dSize; ++i) {
-                    iItems[iIndex++] = dItems[dIndex];
-                }
+            return merge(ia, da, daStatus);
+        }
+    }
 
-                Arrays.sort(iItems, cmp);
+
+    T merge(InsertArray<T> ia,  DeleteArray<T> da, Status daStatus) {
+        var lock = ia.rwLock.writeLock();
+        lock.lock();
+        try {
+            var iItems = ia.items;
+            var dItems = da.items;
+            var cmp = nullReverseComparator;
+            var maxDaCapacity = this.maxDaCapacity;
+            int iIndex = da.lpIndex(); //start index for insert array (val at this index is always null)
+            int dIndex = daStatus.dIndex; //start index for delete array
+            int dSize = da.capacity;
+            for (int i = dIndex; i < dSize; ++i) {
+                iItems[iIndex++] = dItems[dIndex];
+            }
+
+            Arrays.sort(iItems, cmp);
 
                 /*
                 Given this structure with a newDSize 100 and d arr newDSize 30
@@ -185,24 +191,24 @@ public class LBBoundedPQ<T> implements Heap<T> {
                 currIIndex to Math.max(0, currIIndex - 30)
                 * */
 
-                int newDSize = Math.min(iIndex, maxDaCapacity);
-                var newDa = new DeleteArray<T>(newDSize, new DeleteArray.Status(1, NONE));
-                for (int i = iIndex - 1, j = 0; j < newDSize; --i, j++) {
-                    var v = iItems[i];
-                    newDa.items[j] = v;
-                    iItems[i] = null;
-                    --iIndex;
-                }
-                I_INDEX.set(newDa, Math.max(0, iIndex));
-
-                T item = newDa.items[0];
-                //For inserts backed by exclusive lock, otherwise for deletes and inserts, backed by set release
-                //However, they can't modify this as it is prevented by the merging flag
-                D_ARR.setRelease(this, newDa);
-                return item;
-            }finally {
-                lock.unlock();
+            int newDSize = Math.min(iIndex, maxDaCapacity);
+            var newDa = new DeleteArray<T>(newDSize, new DeleteArray.Status(1, NONE));
+            for (int i = iIndex - 1, j = 0; j < newDSize; --i, j++) {
+                var v = iItems[i];
+                newDa.items[j] = v;
+                iItems[i] = null;
+                --iIndex;
             }
+            I_INDEX.set(newDa, Math.max(0, iIndex));
+
+            T item = newDa.items[0];
+            //Writes to this array
+            //For inserts backed by exclusive lock, otherwise for deletes and inserts, backed by set release
+            //However, they can't modify this as it is prevented by the merging flag
+            D_ARR.setRelease(this, newDa);
+            return item;
+        }finally {
+            lock.unlock();
         }
     }
 
@@ -331,7 +337,7 @@ public class LBBoundedPQ<T> implements Heap<T> {
             }
         }
 
-        enum State {NONE, MERGING}
+        enum State {NONE, MERGING, MERGED}
     }
 
     static class InsertArray<T> {
