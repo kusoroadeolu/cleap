@@ -180,5 +180,5 @@ The main issues so far is the fact that fixed capacity tightly couples the delet
 as they both depend on each other to maintain the bounded invariant. Also, through profiling, a lot of the hotpaths have been the memory accesses, which is never a good sign
 as no amount of memory ordering optimization will increase performance to an actual meaningful level. This hints at the algorithm being suboptimal for the problem.
 
-As at now, the best performing structures in heavy poll (measured by latency) by a mile is a simple locked PQ followed by the ordered bounded PQ. The Combining and LB PQ are 
-pretty suboptimal
+As at now, the best performing structures for my intended workload, 80% poll 20% insert (measured by latency) by a mile is a simple locked PQ followed by the ordered bounded PQ. The Combining and LB PQ are 
+pretty suboptimal. However for insert heavy workloads 100% inserts, all these designs are pretty neck in neck as inserts are pretty cheap in most of them
