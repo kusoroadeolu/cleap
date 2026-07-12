@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class ElimLBBoundedPQ<T> implements Heap<T> {
+public class CombiningLBBoundedPQ<T> implements Heap<T> {
     private final InsertArray<T> insertArray;
     private final Comparator<T> nullReverseComparator; //Packs the bottom of an array with nulls
     private volatile DeleteArray<T> deleteArray;
@@ -26,7 +26,7 @@ public class ElimLBBoundedPQ<T> implements Heap<T> {
     final AtomicReferenceArray<Result> array = new AtomicReferenceArray<>(NCPU);
     static final int NCPU = Runtime.getRuntime().availableProcessors();
 
-    public ElimLBBoundedPQ(int capacity) {
+    public CombiningLBBoundedPQ(int capacity) {
         this.capacity = capacity;
         this.maxDaCapacity = Math.max(1, (int) (0.1 * capacity));
         this.insertArray = new InsertArray<>(capacity);
@@ -38,7 +38,7 @@ public class ElimLBBoundedPQ<T> implements Heap<T> {
         };
     }
 
-    public ElimLBBoundedPQ(int capacity, int slack) {
+    public CombiningLBBoundedPQ(int capacity, int slack) {
         this.capacity = capacity;
         this.maxDaCapacity = Math.max(1, (int) (0.1 * capacity));
         this.insertArray = new InsertArray<>(capacity);
@@ -397,7 +397,7 @@ public class ElimLBBoundedPQ<T> implements Heap<T> {
         try{
             I_INDEX = l.findVarHandle(DeleteArray.class, "iIndex", int.class);
             D_INDEX = l.findVarHandle(DeleteArray.class, "dIndex", int.class);
-            D_ARR = l.findVarHandle(ElimLBBoundedPQ.class, "deleteArray", DeleteArray.class);
+            D_ARR = l.findVarHandle(CombiningLBBoundedPQ.class, "deleteArray", DeleteArray.class);
             SLACK_COUNT = l.findVarHandle(DeleteArray.class, "slackCount", int.class);
         }catch (Exception e) {
             throw new RuntimeException(e);

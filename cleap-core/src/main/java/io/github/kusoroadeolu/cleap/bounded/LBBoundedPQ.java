@@ -97,8 +97,6 @@ public class LBBoundedPQ<T> implements Heap<T> {
                 var ia = insertArray;
 
                 for (;;) {
-                    //Use opaque read over plain for a greater chance we'll see the latest (or later) delete array
-                    //However if we see an already merged array, the status write ensures we see the delete array backed by the status write
                     daStatus = da.status; //Volatile read (is merged, we'll always see the new delete array)
 
                     daCapacity = da.capacity;

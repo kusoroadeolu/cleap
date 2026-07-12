@@ -1,7 +1,7 @@
 package io.github.kusoroadeolu.cleap.jmh;
 
 import io.github.kusoroadeolu.cleap.Heap;
-import io.github.kusoroadeolu.cleap.bounded.ElimLBBoundedPQ;
+import io.github.kusoroadeolu.cleap.bounded.CombiningLBBoundedPQ;
 import io.github.kusoroadeolu.cleap.bounded.LBBoundedPQ;
 import io.github.kusoroadeolu.cleap.bounded.LockedPQ;
 import io.github.kusoroadeolu.cleap.bounded.OrderedBoundedPQ;
@@ -34,7 +34,7 @@ HeavyPollBench.eightThreads     ELB  thrpt   30   0.917 ± 0.058  ops/us
 public class HeavyPollBench {
     private Heap<Integer> queue;
 
-    @Param({"LOCK", "OBQ", "LB", "ELB"})
+    @Param({ "LB", "ELB"})
     private String type;
 
     @State(Scope.Thread)
@@ -48,8 +48,8 @@ public class HeavyPollBench {
     public void setup() {
         queue = switch (type) {
             case "LOCK" -> new LockedPQ<>(10000);
-            case "LB" -> new LBBoundedPQ<>(10000);
-            case "ELB" -> new ElimLBBoundedPQ<>(10000);
+            case "LB" -> new LBBoundedPQ<>(10000, 10);
+            case "ELB" -> new CombiningLBBoundedPQ<>(10000, 10);
             case "OBQ" -> new OrderedBoundedPQ<>(10000);
 
 
@@ -84,7 +84,7 @@ public class HeavyPollBench {
         static void main() throws RunnerException {
             Options options = new OptionsBuilder()
                     .include(HeavyPollBench.class.getSimpleName())
-                    .addProfiler(JavaFlightRecorderProfiler.class, "dir=C:\\jfr-sl")
+                    .addProfiler(JavaFlightRecorderProfiler.class, "dir=C:\\jfr-hp")
                     .build();
             new org.openjdk.jmh.runner.Runner(options).run();
         }

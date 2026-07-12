@@ -2,7 +2,6 @@ package io.github.kusoroadeolu.cleap.bounded;
 
 import org.junit.jupiter.api.Test;
 
-import java.util.Arrays;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -10,7 +9,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class ElimLBBoundedPQTest {
     @Test
     void mergeFlow_onDelete_shouldBeFilledProperly() {
-        var pq = new ElimLBBoundedPQ<>(10);
+        var pq = new CombiningLBBoundedPQ<>(10);
         pq.add(5); pq.add(1); pq.add(3);
         assertEquals(1, pq.poll());
     }
@@ -18,20 +17,20 @@ class ElimLBBoundedPQTest {
 
     @Test
     void onDeleteWithEmptyPQShouldReturnNull() {
-        var pq = new ElimLBBoundedPQ<>(1);
+        var pq = new CombiningLBBoundedPQ<>(1);
         assertEquals(null, pq.poll());
     }
 
     @Test
     void onDeleteWithNoEmptyPQShouldReturnNull() {
-        var pq = new ElimLBBoundedPQ<>(2);
+        var pq = new CombiningLBBoundedPQ<>(2);
         pq.add(1);
         assertEquals(1, pq.poll());
     }
 
     @Test
     void onInsertThenDeleteEnsure9ValuesInDA() {
-        var pq = new ElimLBBoundedPQ<Integer>(100);
+        var pq = new CombiningLBBoundedPQ<Integer>(100);
         for (int i = 0; i < 100; ++i) {
             pq.add(ThreadLocalRandom.current().nextInt(1_000));
         }
@@ -44,7 +43,7 @@ class ElimLBBoundedPQTest {
 
     @Test
     void onInsertThenDeleteEnsureNoNullsInDA() {
-        var pq = new ElimLBBoundedPQ<Integer>(100);
+        var pq = new CombiningLBBoundedPQ<Integer>(100);
         for (int i = 0; i < 100; ++i) {
             pq.add(ThreadLocalRandom.current().nextInt(1_000));
         }

@@ -141,4 +141,44 @@ else return value at I
 
 
 ## LATER THOUGHTS
-- Ditched the buffer approach and the memory footprint goal
+- I ditched the buffer approach as it was harder to maintain correctness with the buffer included
+
+### What I've Done So Far
+So far I've managed to build 3 versions of what I described here
+1. LBBoundedPQ - A relaxed priority queue that includes a delete min array and an insert array. The insert array is protected by a RW lock.
+Inserts always acquire the read lock, so multiple inserts can occur concurrently. 
+Inserts do not maintain priority order, rather they maintain fifo order using a cas based counter to claim positions in the array to insert into the array. Note the array cannot grow or shrink
+A merge flag/counter is provided for inserts in the case an inserted value has a higher priority than the lowest priority item in the delete array
+
+Deletes use a separate array-based structure which hold the highest priority items in the structure, to allow for deletes. To delete a value, a thread trys to claim an index in the delete array 
+If the index claimed is >= than the size of the delete array or an insert has flagged for a merge(up to a specific slack count), the delete thread suspends all delete operations temporarily by indicating it is merging. At this time other delete threads will backoff
+The deleting thread will then acquire the write lock for the insert array, sort the insert array(in reversed order), before extracting the needed number of elems from the insert array and rebuilding the new delete array
+
+The indexes of the insert and delete arrays are monotonically increasing and can never decrease 
+
+To ensure boundedness/fixed capacity in this pq, we allow for loose boundedness (in the sense at 2 points p a thread could see an index I for the insert array and later see a value D for the delete array)
+We accept this caveat as remember the indexes in this structure are monotonically increasing.
+
+Ideally the publication of a new delete array `happens before` the old delete array is marked as merged/dead
+
+
+2. CombiningLBBoundedPQ - Similar to the LBBoundedPQ however, to solve the sequential nature of the poll operation we allow for combining.
+A technique in which threads contend over mutual exclusion for a critical section. Threads which fail to acquire the mutex publish their 
+work in a shared structure to allow the combiner to help do their work for them (in batches). 
+
+The combining thread in this scenario handles the merging and index acquisition logic. If a merge is needed, the combining thread allows merges before index acquistion
+
+3. OrderedBoundedPQ - Similar to the LBBoundedPQ however, inserts are protected by an exclusive lock and the insert array always obeys the heap
+invariant under the lock. The merge invariant for inserted values with higher prio than those in the delete array is non-existent here. This allows for deletes to take advantage of a FAA counter rather than a CAS based counter.
+
+In the case of a merge; when the delete array is logically empty i.e delete index == delete arr capacity/size, a thread sets the status of that array to merging, acquires the insert lock
+and repeatedly polls the highest priority value from the insert array into the new delete array before making the new delete array visible
+
+
+## THOUGHTS
+The main issues so far is the fact that fixed capacity tightly couples the delete and insert array, which causes cache coherence traffic and copious amounts of false sharing
+as they both depend on each other to maintain the bounded invariant. Also, through profiling, a lot of the hotpaths have been the memory accesses, which is never a good sign
+as no amount of memory ordering optimization will increase performance to an actual meaningful level. This hints at the algorithm being suboptimal for the problem.
+
+As at now, the best performing structures in heavy poll (measured by latency) by a mile is a simple locked PQ followed by the ordered bounded PQ. The Combining and LB PQ are 
+pretty suboptimal

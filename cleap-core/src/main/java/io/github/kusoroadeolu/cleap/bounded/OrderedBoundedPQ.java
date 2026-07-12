@@ -5,7 +5,6 @@ import io.github.kusoroadeolu.cleap.Heap;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.Arrays;
-import java.util.concurrent.locks.LockSupport;
 
 public class OrderedBoundedPQ<T> implements Heap<T> {
     final FixedPriorityQueue<T> pq;
@@ -44,7 +43,6 @@ public class OrderedBoundedPQ<T> implements Heap<T> {
     @Override
     public T poll() {
         DeleteArray<T> da;
-
             for (;;) {
                 da = (DeleteArray<T>) D_ARR.getAcquire(this);
                 var s = lvState(da);
@@ -105,7 +103,7 @@ public class OrderedBoundedPQ<T> implements Heap<T> {
 
 
     State lvState(DeleteArray<T> da) {
-        return (State) STATE.getVolatile(da);
+        return (State) STATE.getAcquire(da);
     }
 
     boolean casState(State a, State b, DeleteArray<T> da) {

@@ -1,11 +1,9 @@
 package io.github.kusoroadeolu.cleap.jmh;
 
 import io.github.kusoroadeolu.cleap.Heap;
-import io.github.kusoroadeolu.cleap.bounded.ElimLBBoundedPQ;
 import io.github.kusoroadeolu.cleap.bounded.LBBoundedPQ;
 import io.github.kusoroadeolu.cleap.bounded.LockedPQ;
 import io.github.kusoroadeolu.cleap.bounded.OrderedBoundedPQ;
-import io.github.kusoroadeolu.cleap.experimental.PIPQ;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
 import org.openjdk.jmh.runner.RunnerException;
