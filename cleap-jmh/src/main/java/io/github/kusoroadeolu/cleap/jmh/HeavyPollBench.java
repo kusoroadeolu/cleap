@@ -15,7 +15,17 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
-@BenchmarkMode(Mode.SampleTime)
+/*
+* Benchmark                    (type)   Mode  Cnt   Score   Error   Units
+HeavyPollBench.eightThreads    LOCK  thrpt   30  32.505 ± 0.819  ops/us
+HeavyPollBench.eightThreads     OBQ  thrpt   30  13.166 ± 0.619  ops/us
+HeavyPollBench.eightThreads      LB  thrpt   30   0.982 ± 0.098  ops/us
+HeavyPollBench.eightThreads     ELB  thrpt   30   0.917 ± 0.058  ops/us
+* */
+
+
+
+@BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @State(Scope.Benchmark)
 @Warmup(iterations = 10, time = 1)
@@ -24,7 +34,7 @@ import java.util.concurrent.TimeUnit;
 public class HeavyPollBench {
     private Heap<Integer> queue;
 
-    @Param({"LB"})
+    @Param({"LOCK", "OBQ", "LB", "ELB"})
     private String type;
 
     @State(Scope.Thread)
@@ -50,10 +60,6 @@ public class HeavyPollBench {
 
     }
 
-//    @TearDown(Level.Iteration)
-//    public void after() {
-//        queue.clear();
-//    }
 
 //    @Threads(4)
 //    @Benchmark
@@ -87,9 +93,6 @@ public class HeavyPollBench {
 }
 
 /*
-"
-"
-
 Benchmark                            (type)    Mode      Cnt      Score   Error  Units
 HeavyPollBench.eightThreads            LOCK  sample  5960936      1.284 ± 0.017  us/op
 HeavyPollBench.eightThreads:p0.00      LOCK  sample                 ≈ 0          us/op
@@ -134,5 +137,5 @@ HeavyPollBench.eightThreads:p0.99       OBQ  sample              51.840         
 HeavyPollBench.eightThreads:p0.999      OBQ  sample             107.776          us/op
 HeavyPollBench.eightThreads:p0.9999     OBQ  sample            1513.472          us/op
 HeavyPollBench.eightThreads:p1.00       OBQ  sample           21561.344          us/op
-" this is are the results i got for another pq structure i built
 * */
+

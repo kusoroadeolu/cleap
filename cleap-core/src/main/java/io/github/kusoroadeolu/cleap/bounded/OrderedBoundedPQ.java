@@ -5,8 +5,7 @@ import io.github.kusoroadeolu.cleap.Heap;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.Arrays;
-import java.util.Comparator;
-import java.util.PriorityQueue;
+import java.util.concurrent.locks.LockSupport;
 
 public class OrderedBoundedPQ<T> implements Heap<T> {
     final FixedPriorityQueue<T> pq;
@@ -44,15 +43,15 @@ public class OrderedBoundedPQ<T> implements Heap<T> {
 
     @Override
     public T poll() {
-        DeleteArray<T> da = null;
+        DeleteArray<T> da;
 
             for (;;) {
-                da = deleteArray;
-                var s = loState(da);
+                da = (DeleteArray<T>) D_ARR.getAcquire(this);
+                var s = lvState(da);
 
                 if (s != State.NONE) {
                     if (s == State.MERGED) continue;
-                    while (loState(da) == State.MERGING) Thread.onSpinWait();
+                    while (lvState(da) == State.MERGING) Thread.onSpinWait();
                     continue;
                 }
 
@@ -67,37 +66,34 @@ public class OrderedBoundedPQ<T> implements Heap<T> {
 
                 else if (idx == 0) return null;
 
-                if ((s = loState(da)) != State.NONE || !casState(s, State.MERGING, da)) {
+                if ((s = lvState(da)) != State.NONE || !casState(s, State.MERGING, da)) {
                     if (s == State.MERGED) continue;
-                    while (loState(da) == State.MERGING) Thread.onSpinWait();
+                    while (lvState(da) == State.MERGING) Thread.onSpinWait();
                     continue;
                 }
 
 
-            try {
-                synchronized (lock) {
+                try {
+                    synchronized (lock) {
+                        int iIdx = (int) I_INDEX.get(da); //value at this idx is always null (so this is always the size of the queue)
+                        var pq = this.pq;
 
-                    int iIdx = (int) I_INDEX.get(da); //value at this idx is always null (so this is always the size of the queue)
-                    var pq = this.pq;
-
-                    int newDaCap = Math.min(iIdx, maxDaCapacity);
-                    Object[] dq = new Object[newDaCap];
+                        int newDaCap = Math.min(iIdx, maxDaCapacity);
+                        Object[] dq = new Object[newDaCap];
 
 
-                    for (int i = 0; i < newDaCap; ++i) {
-                        dq[i] = pq.poll(--iIdx);
+                        for (int i = 0; i < newDaCap; ++i) {
+                            dq[i] = pq.poll(--iIdx);
+                        }
+
+                        var newDa = new DeleteArray<T>(dq, iIdx, 1);
+                        D_ARR.setRelease(this, newDa);
+                        return (T) dq[0];
                     }
 
-                    var newDa = new DeleteArray<T>(dq, iIdx, 1);
-                    deleteArray = newDa;
-                    return (T) dq[0];
+                }finally {
+                    da.state = State.MERGED;
                 }
-
-            }finally {
-                STATE.setRelease(da, State.MERGED);
-            }
-
-
             }
 
     }
@@ -108,8 +104,8 @@ public class OrderedBoundedPQ<T> implements Heap<T> {
     }
 
 
-    State loState(DeleteArray<T> da) {
-        return (State) STATE.getAcquire(da);
+    State lvState(DeleteArray<T> da) {
+        return (State) STATE.getVolatile(da);
     }
 
     boolean casState(State a, State b, DeleteArray<T> da) {
@@ -155,17 +151,17 @@ public class OrderedBoundedPQ<T> implements Heap<T> {
 
     enum State {MERGING, NONE, MERGED}
 
-    record Status (State state) {}
-
 
     private static final VarHandle D_INDEX;
     private static final VarHandle STATE;
     private static final VarHandle I_INDEX;
+    private static final VarHandle D_ARR;
 
 
     static {
         var l = MethodHandles.lookup();
         try{
+            D_ARR =  l.findVarHandle(OrderedBoundedPQ.class, "deleteArray", DeleteArray.class);
             D_INDEX = l.findVarHandle(DeleteArray.class, "deleteIndex", int.class);
             I_INDEX = l.findVarHandle(DeleteArray.class, "insertIndex", int.class);
             STATE = l.findVarHandle(DeleteArray.class, "state", State.class);
@@ -175,8 +171,7 @@ public class OrderedBoundedPQ<T> implements Heap<T> {
     }
 
     static class FixedPriorityQueue<T> {
-        Object[] queue;
-        int size;
+        final Object[] queue;
 
         public FixedPriorityQueue(int capacity) {
             this.queue = new Object[capacity];
@@ -185,7 +180,6 @@ public class OrderedBoundedPQ<T> implements Heap<T> {
         public void add(T t, int size) {
             int i = size;
             siftUpComparable(i, t, queue);
-            this.size++;
         }
 
         public T poll(int size) {
@@ -195,7 +189,6 @@ public class OrderedBoundedPQ<T> implements Heap<T> {
             if ((result = (T) ((es = queue)[0])) != null) {
                 final int n;
                 final T x = (T) es[(n = size)];
-                this.size--;
                 es[n] = null;
                 if (n > 0) {
                     siftDownComparable(0, x, es, n);
@@ -205,8 +198,7 @@ public class OrderedBoundedPQ<T> implements Heap<T> {
         }
 
         private static <T> void siftDownComparable(int k, T x, Object[] es, int n) {
-
-                Comparable<? super T> key = (Comparable<? super T>)x;
+                Comparable<? super T> key = (Comparable<? super T>) x;
                 int half = n >>> 1;           // loop while a non-leaf
                 while (k < half) {
                     int child = (k << 1) + 1; // assume left child is least
@@ -228,7 +220,7 @@ public class OrderedBoundedPQ<T> implements Heap<T> {
             while (k > 0) {
                 int parent = (k - 1) >>> 1;
                 Object e = es[parent];
-                if (e == null || key.compareTo((T) e) >= 0)
+                if (key.compareTo((T) e) >= 0)
                     break;
                 es[k] = e;
                 k = parent;
@@ -236,4 +228,5 @@ public class OrderedBoundedPQ<T> implements Heap<T> {
             es[k] = key;
         }
     }
+
 }

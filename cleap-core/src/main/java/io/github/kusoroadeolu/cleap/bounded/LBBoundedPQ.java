@@ -12,9 +12,7 @@ import java.util.List;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import static io.github.kusoroadeolu.cleap.bounded.LBBoundedPQ.DeleteArray.State.MERGING;
-import static io.github.kusoroadeolu.cleap.bounded.LBBoundedPQ.DeleteArray.State.MERGED;
-import static io.github.kusoroadeolu.cleap.bounded.LBBoundedPQ.DeleteArray.State.NONE;
+import static io.github.kusoroadeolu.cleap.bounded.LBBoundedPQ.DeleteArray.State.*;
 
 public class LBBoundedPQ<T> implements Heap<T> {
     private final InsertArray<T> insertArray;
@@ -47,19 +45,6 @@ public class LBBoundedPQ<T> implements Heap<T> {
             return compare(b, a);
         };
     }
-
-    LBBoundedPQ(InsertArray<T> ia, DeleteArray<T> da) {
-        this.capacity = ia.items.length;
-        this.maxDaCapacity = Math.max(1, (int) (0.1 * capacity));
-        this.insertArray = ia;
-        this.deleteArray = da;
-        this.slack = Math.max(1, (int) (0.1 * maxDaCapacity));
-        this.nullReverseComparator = (a, b) -> {
-            if (b == null || a == null) return 1;
-            return compare(b, a);
-        };
-    }
-
 
     @Override
     public boolean add(T t) {
@@ -103,55 +88,59 @@ public class LBBoundedPQ<T> implements Heap<T> {
 
     @Override
     public T poll() {
-            DeleteArray<T> da;
-            int daCapacity;
-            int seenIndex;
-            int daIndex;
-            Status daStatus;
-            var ia = insertArray;
+        outer: for (;;) {
+                DeleteArray<T> da = (DeleteArray<T>) D_ARR.getAcquire(this);
+                int daCapacity;
+                int seenIndex;
+                int daIndex;
+                Status daStatus;
+                var ia = insertArray;
 
-            outer: for (;;) {
-                da = (DeleteArray<T>) D_ARR.getOpaque(this); //Use opaque read over plain for a greater chance we'll see the latest (or later) delete array
-                //However if we see an already merged array, the status write ensures we see the delete array backed by the status write
-                daStatus = da.status; //Volatile read (is merged, we'll always see the new delete array)
+                for (;;) {
+                    //Use opaque read over plain for a greater chance we'll see the latest (or later) delete array
+                    //However if we see an already merged array, the status write ensures we see the delete array backed by the status write
+                    daStatus = da.status; //Volatile read (is merged, we'll always see the new delete array)
 
-                daCapacity = da.capacity;
-                var state = daStatus.state;
+                    daCapacity = da.capacity;
+                    var state = daStatus.state;
 
-                if (state == MERGING) {
-                    for (;;) {
-                        if (da.status.state == MERGED) continue outer;
-                        Thread.onSpinWait();
-                    }
-                } else if (state == MERGED) continue;
-
-                seenIndex = da.loIIndex();
-                daIndex = daStatus.dIndex;
-                boolean isEmpty = daIndex == daCapacity;
-
-                if (isEmpty && seenIndex == 0) return null; //DA and IA are empty (will never be zero in the presence of merging deletes)
-
-                boolean shouldMerge = isEmpty || da.slackCount >= slack;
-                // if , reassign daStatus if the cas succeeds
-
-                Status s;
-                if (shouldMerge) {
-                    if (da.casStatus(daStatus, (s = new Status(daIndex, MERGING)))) {
-                        daStatus = s;
-                        break;
-                    } else {
+                    if (state == MERGING) {
                         for (;;) {
                             if (da.status.state == MERGED) continue outer;
                             Thread.onSpinWait();
                         }
-                    }
+                    } else if (state == MERGED) continue outer;
 
-                } else if (da.casStatus(daStatus, new Status(daIndex + 1, NONE))) {
-                    return da.items[daIndex];
+                    seenIndex = da.loIIndex();
+                    daIndex = daStatus.dIndex;
+                    boolean isEmpty = daIndex == daCapacity;
+
+                    if (isEmpty && seenIndex == 0) return null; //DA and IA are empty (will never be zero in the presence of merging deletes)
+
+                    boolean shouldMerge = isEmpty || da.slackCount >= slack;
+                    // if , reassign daStatus if the cas succeeds
+
+                    Status s;
+                    if (shouldMerge) {
+                        if (da.casStatus(daStatus, (s = new Status(daIndex, MERGING)))) {
+                            daStatus = s;
+                            break;
+                        } else {
+                            for (;;) {
+                                if (da.status.state == MERGED) continue outer;
+                                Thread.onSpinWait();
+                            }
+                        }
+
+                    } else if (da.casStatus(daStatus, new Status(daIndex + 1, NONE))) {
+                        return da.items[daIndex];
+                    }
                 }
+
+                return merge(ia, da, daStatus);
             }
 
-            return merge(ia, da, daStatus);
+
     }
 
 
@@ -209,7 +198,7 @@ public class LBBoundedPQ<T> implements Heap<T> {
             //Writes to this array
             //For inserts backed by exclusive lock, otherwise for deletes and inserts, backed by set release
             //However, they can't modify this as it is prevented by the merging flag
-            D_ARR.setOpaque(this, newDa);
+            D_ARR.setRelease(this, newDa);
             da.status = new Status(iIndex, MERGED);
             return item;
         }finally {
@@ -219,7 +208,7 @@ public class LBBoundedPQ<T> implements Heap<T> {
 
 
     public List<T> toList() {
-        var da = deleteArray;
+        var da = (DeleteArray<T>) D_ARR.getAcquire(this);
         var ia = insertArray;
         List<T> list = new ArrayList<>();
 
@@ -266,7 +255,7 @@ public class LBBoundedPQ<T> implements Heap<T> {
     @Override
     public int size() {
         for (;;) {
-            var da = deleteArray;
+            var da = (DeleteArray<T>) D_ARR.getVolatile(this);
             var s = da.status;
             if (s.state == MERGED) continue;
             return da.loIIndex() + (da.size() - da.status.dIndex);
