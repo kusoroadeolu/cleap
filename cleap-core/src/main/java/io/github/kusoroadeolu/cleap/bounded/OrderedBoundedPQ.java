@@ -5,6 +5,7 @@ import io.github.kusoroadeolu.cleap.Heap;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.Arrays;
+import java.util.concurrent.ArrayBlockingQueue;
 
 public class OrderedBoundedPQ<T> implements Heap<T> {
     final FixedPriorityQueue<T> pq;

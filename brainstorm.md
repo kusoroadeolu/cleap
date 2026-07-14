@@ -166,7 +166,7 @@ Ideally the publication of a new delete array `happens before` the old delete ar
 A technique in which threads contend over mutual exclusion for a critical section. Threads which fail to acquire the mutex publish their 
 work in a shared structure to allow the combiner to help do their work for them (in batches). 
 
-The combining thread in this scenario handles the merging and index acquisition logic. If a merge is needed, the combining thread allows merges before index acquistion
+The combining thread in this scenario handles the merging and index acquisition logic. If a merge is needed, the combining thread always merges before index acquistion
 
 3. OrderedBoundedPQ - Similar to the LBBoundedPQ however, inserts are protected by an exclusive lock and the insert array always obeys the heap
 invariant under the lock. The merge invariant for inserted values with higher prio than those in the delete array is non-existent here. This allows for deletes to take advantage of a FAA counter rather than a CAS based counter.
@@ -186,7 +186,7 @@ pretty suboptimal. However for insert heavy workloads 100% inserts, all these de
 
 ## A simpler redesign (experimental)
 So far, I've been rethinking some choices, a new design I've emerged with (not necessarily a new design in that sense) but one
-that repurposes a well studied data structure. An MPMC Bounded Queue
+that repurposes a well studied data structure. A MPMC Bounded Queue
 
 
 We relax the invariants through logical deletion epochs (will be explained later). The heap invariant is not maintained as well
@@ -204,7 +204,7 @@ repeatedly:
 if consumer index == capacity
     if consumer index  == producer index, return empty
     otherwise  a thread tries to start a merge (this begins a logical epoch) by acquiring a simple spin lock (by casing the capacity to the new one if we fail we spin on the capacity)
-    during a merge, we subset the array from consumer index (masked) to producer index
+    during a merge, we subset the array from consumer index (masked) to producer index or a capacity
     We copy this subset from the array into a new array, sort that array and recopy back into the original
     We then claim the first consumer index, before making the new capacity visible
 otherwise
@@ -215,6 +215,7 @@ otherwise
 The idea of logical epochs is to solve the issue of later arriving higher priority values
 We define that an epoch starts when the structure is initially made or after a merge and ends when a merge begins
 We sort values by their epoch first, then their actual priority, so we trade perfect strictness for relaxed priority semantics
+Epoch sizes are also bounded to prevent tail latency spikes
 
 For example take an initial array of capacity 5 with these values
 
