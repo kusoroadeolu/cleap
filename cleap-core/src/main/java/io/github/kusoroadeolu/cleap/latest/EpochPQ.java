@@ -7,10 +7,8 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicReferenceArray;
-import java.util.concurrent.locks.LockSupport;
 
-import static io.github.kusoroadeolu.cleap.latest.Utils.fieldOffset;
-import static io.github.kusoroadeolu.cleap.latest.Utils.offset;
+import static io.github.kusoroadeolu.cleap.latest.Utils.*;
 
 
 class CircularArrayRPad<E> extends CircularArray<E> {
@@ -208,7 +206,7 @@ class MergeLimitRPad<E> extends MergeLimitField<E> {
     }
 }
 
-class SharedProducerFields<E> extends MergeLimitRPad<E> {
+class SharedConsumerFields<E> extends MergeLimitRPad<E> {
 
     int state;
     final AtomicReferenceArray<Object> arena;
@@ -217,10 +215,13 @@ class SharedProducerFields<E> extends MergeLimitRPad<E> {
     static final Object WAITER = new Object();
     static final Object AWAIT = new Object();
     static final Object NONE = new Object();
-    static final VarHandle STATE = fieldOffset(SharedProducerFields.class, "state", int.class);
+    static final VarHandle STATE = fieldOffset(SharedConsumerFields.class, "state", int.class);
+    static final int SPINS_PER_SLOT = 200;
+    static final int MAX_SPINS = NCPU * SPINS_PER_SLOT;
+    static final int BACKOFF_SPINS = 40;
 
 
-    public SharedProducerFields(int capacity) {
+    public SharedConsumerFields(int capacity) {
         super(capacity);
         arena = new AtomicReferenceArray<>(arenaSize());
     }
@@ -242,7 +243,7 @@ class SharedProducerFields<E> extends MergeLimitRPad<E> {
     }
 }
 
-class SharedProducerFieldsRPad<E> extends SharedProducerFields<E> {
+class SharedConsumerFieldsRPad<E> extends SharedConsumerFields<E> {
     byte b000,b001,b002,b003,b004,b005,b006,b007;//  8b
     byte b010,b011,b012,b013,b014,b015,b016,b017;// 16b
     byte b020,b021,b022,b023,b024,b025,b026,b027;// 24b
@@ -260,13 +261,13 @@ class SharedProducerFieldsRPad<E> extends SharedProducerFields<E> {
     byte b160,b161,b162,b163,b164,b165,b166,b167;//120b
     byte b170,b171,b172,b173,b174,b175,b176,b177;//128b
 
-    public SharedProducerFieldsRPad(int capacity) {
+    public SharedConsumerFieldsRPad(int capacity) {
         super(capacity);
     }
 }
 
 
-public class EpochPQ<E> extends SharedProducerFieldsRPad<E> implements Heap<E> {
+public class EpochPQ<E> extends SharedConsumerFieldsRPad<E> implements Heap<E> {
 
     public EpochPQ(int capacity) {
         super(capacity);
@@ -331,7 +332,7 @@ public class EpochPQ<E> extends SharedProducerFieldsRPad<E> implements Heap<E> {
 
             int start = ThreadLocalRandom.current().nextInt();
             int arenaSize = arenaSize();
-            inner: for (int step = 0, totalSpins = 0; (step < arenaSize) && (totalSpins < 1000); step++) {
+            inner: for (int step = 0, totalSpins = 0; (step < arenaSize) && (totalSpins < MAX_SPINS); step++) {
                 int index = (step + start) & MASK;
                 var seen = arena.getAcquire(index);
                 if (seen == null && arena.compareAndSet(index, null, WAITER)) {
@@ -343,12 +344,12 @@ public class EpochPQ<E> extends SharedProducerFieldsRPad<E> implements Heap<E> {
                                 while ((elem = arena.getAcquire(index)) == AWAIT) Thread.onSpinWait();
                                 arena.setRelease(index, null);
                                 return elem == NONE ? null : (E) elem;
-                            } else if ((spins >= 250) && arena.compareAndSet(index, WAITER, null)) {
+                            } else if ((spins >= SPINS_PER_SLOT) && arena.compareAndSet(index, WAITER, null)) {
                                 totalSpins += spins;
                                 continue inner;
                             }
 
-                            while (++backoffSpins <= 50) Thread.onSpinWait();
+                            while (++backoffSpins <= BACKOFF_SPINS) Thread.onSpinWait(); //avoid repeated spins on index to prevent cache line thrashing
 
                             spins += backoffSpins;
                             backoffSpins = 0;
