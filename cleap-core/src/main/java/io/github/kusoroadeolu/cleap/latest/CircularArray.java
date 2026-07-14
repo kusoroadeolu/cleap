@@ -47,5 +47,9 @@ public class CircularArray<E> extends CircularArrayLPad {
     public E lvElem(Object[] buf, int index) {
         return (E) BUFFER.getVolatile(buf, index);
     }
+
+    public E lpElem(Object[] buf, int index) {
+        return (E) BUFFER.get(buf, index);
+    }
 }
 

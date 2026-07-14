@@ -2,12 +2,11 @@ package io.github.kusoroadeolu.cleap.jmh;
 
 import io.github.kusoroadeolu.cleap.Heap;
 import io.github.kusoroadeolu.cleap.bounded.CombiningLBBoundedPQ;
-import io.github.kusoroadeolu.cleap.bounded.LBBoundedPQ;
 import io.github.kusoroadeolu.cleap.bounded.LockedPQ;
 import io.github.kusoroadeolu.cleap.bounded.OrderedBoundedPQ;
+import io.github.kusoroadeolu.cleap.latest.EpochPQ;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
-import org.openjdk.jmh.profile.JavaFlightRecorderProfiler;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
@@ -21,6 +20,7 @@ HeavyPollBench.eightThreads    LOCK  thrpt   30  32.505 ± 0.819  ops/us
 HeavyPollBench.eightThreads     OBQ  thrpt   30  13.166 ± 0.619  ops/us
 HeavyPollBench.eightThreads      LB  thrpt   30   0.982 ± 0.098  ops/us
 HeavyPollBench.eightThreads     ELB  thrpt   30   0.917 ± 0.058  ops/us
+HeavyPollBench.eightThreads         EPO  thrpt   30  25.870 ± 0.454  ops/us
 * */
 
 
@@ -34,7 +34,7 @@ HeavyPollBench.eightThreads     ELB  thrpt   30   0.917 ± 0.058  ops/us
 public class HeavyPollBench {
     private Heap<Integer> queue;
 
-    @Param({ "LB", "ELB"})
+    @Param({"EPO"})
     private String type;
 
     @State(Scope.Thread)
@@ -48,7 +48,7 @@ public class HeavyPollBench {
     public void setup() {
         queue = switch (type) {
             case "LOCK" -> new LockedPQ<>(10000);
-            case "LB" -> new LBBoundedPQ<>(10000, 10);
+            case "EPO" -> new EpochPQ<>(10000);
             case "ELB" -> new CombiningLBBoundedPQ<>(10000, 10);
             case "OBQ" -> new OrderedBoundedPQ<>(10000);
 
@@ -84,7 +84,7 @@ public class HeavyPollBench {
         static void main() throws RunnerException {
             Options options = new OptionsBuilder()
                     .include(HeavyPollBench.class.getSimpleName())
-                    .addProfiler(JavaFlightRecorderProfiler.class, "dir=C:\\jfr-hp")
+                    //.addProfiler(JavaFlightRecorderProfiler.class, "dir=C:\\jfr-hp")
                     .build();
             new org.openjdk.jmh.runner.Runner(options).run();
         }
@@ -137,5 +137,17 @@ HeavyPollBench.eightThreads:p0.99       OBQ  sample              51.840         
 HeavyPollBench.eightThreads:p0.999      OBQ  sample             107.776          us/op
 HeavyPollBench.eightThreads:p0.9999     OBQ  sample            1513.472          us/op
 HeavyPollBench.eightThreads:p1.00       OBQ  sample           21561.344          us/op
+
+
+Benchmark                            (type)    Mode      Cnt      Score   Error  Units
+HeavyPollBench.eightThreads             EPO  sample  5942115      0.615 ± 0.051  us/op
+HeavyPollBench.eightThreads:p0.00       EPO  sample                 ≈ 0          us/op
+HeavyPollBench.eightThreads:p0.50       EPO  sample               0.100          us/op
+HeavyPollBench.eightThreads:p0.90       EPO  sample               2.200          us/op
+HeavyPollBench.eightThreads:p0.95       EPO  sample               2.200          us/op
+HeavyPollBench.eightThreads:p0.99       EPO  sample               2.400          us/op
+HeavyPollBench.eightThreads:p0.999      EPO  sample              15.088          us/op
+HeavyPollBench.eightThreads:p0.9999     EPO  sample             153.034          us/op
+HeavyPollBench.eightThreads:p1.00       EPO  sample           25919.488          us/op
 * */
 

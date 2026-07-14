@@ -4,6 +4,7 @@ import io.github.kusoroadeolu.cleap.Heap;
 import io.github.kusoroadeolu.cleap.bounded.CombiningLBBoundedPQ;
 import io.github.kusoroadeolu.cleap.bounded.LBBoundedPQ;
 import io.github.kusoroadeolu.cleap.bounded.LockedPQ;
+import io.github.kusoroadeolu.cleap.latest.EpochPQ;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
 import org.openjdk.jmh.runner.RunnerException;
@@ -13,7 +14,7 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
-@BenchmarkMode(Mode.SampleTime)
+@BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @State(Scope.Benchmark)
 @Warmup(iterations = 10, time = 1)
@@ -83,7 +84,7 @@ MixedWorkloadBench.fourThreads       JDK  thrpt   30  18.096 ± 0.280  ops/us
 public class MixedWorkloadBench {
     private Heap<Integer> queue;
 
-    @Param({"ELB"})
+    @Param({"EPO"})
     private String type;
 
     @State(Scope.Thread)
@@ -96,7 +97,7 @@ public class MixedWorkloadBench {
         queue = switch (type) {
             case "LOCK" -> new LockedPQ<>(10000);
             case "LB" -> new LBBoundedPQ<>(10000);
-            case "ELB" -> new CombiningLBBoundedPQ<>(10000);
+            case "EPO" -> new EpochPQ<>(10000);
             default -> throw new RuntimeException();
         };
 
