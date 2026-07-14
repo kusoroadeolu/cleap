@@ -171,7 +171,7 @@ The combining thread in this scenario handles the merging and index acquisition 
 3. OrderedBoundedPQ - Similar to the LBBoundedPQ however, inserts are protected by an exclusive lock and the insert array always obeys the heap
 invariant under the lock. The merge invariant for inserted values with higher prio than those in the delete array is non-existent here. This allows for deletes to take advantage of a FAA counter rather than a CAS based counter.
 
-In the case of a merge; when the delete array is logically empty i.e delete index == delete arr capacity/size, a thread sets the status of that array to merging, acquires the insert lock
+In the case of a merge; when the delete array is logically empty i.e. delete index == delete arr capacity/size, a thread sets the status of that array to merging, acquires the insert lock
 and repeatedly polls the highest priority value from the insert array into the new delete array before making the new delete array visible
 
 
@@ -182,3 +182,45 @@ as no amount of memory ordering optimization will increase performance to an act
 
 As at now, the best performing structures for my intended workload, 80% poll 20% insert (measured by latency) by a mile is a simple locked PQ followed by the ordered bounded PQ. The Combining and LB PQ are 
 pretty suboptimal. However for insert heavy workloads 100% inserts, all these designs are pretty neck in neck as inserts are pretty cheap in most of them
+
+
+## A simpler redesign (experimental)
+So far, I've been rethinking some choices, a new design I've emerged with (not necessarily a new design in that sense) but one
+that repurposes a well studied data structure. An MPMC Bounded Queue
+
+
+We relax the invariants through logical deletion epochs (will be explained later). The heap invariant is not maintained as well
+
+### Pseudocode
+We rely on the MPMC as an abstraction for the pseudocode, though I'll implement it myself.
+
+## Insert 
+MPMC Insert
+
+## Polls
+Assuming a producer index, consumer index and a consumer capacity (the index of the array that we merged to)
+
+repeatedly:
+if consumer index == capacity
+    if consumer index  == producer index, return empty
+    otherwise  a thread tries to start a merge (this begins a logical epoch) by acquiring a simple spin lock (by casing the capacity to the new one if we fail we spin on the capacity)
+    during a merge, we subset the array from consumer index (masked) to producer index
+    We copy this subset from the array into a new array, sort that array and recopy back into the original
+    We then claim the first consumer index, before making the new capacity visible
+otherwise
+    MPMC poll
+
+
+### Logical epochs
+The idea of logical epochs is to solve the issue of later arriving higher priority values
+We define that an epoch starts when the structure is initially made or after a merge and ends when a merge begins
+We sort values by their epoch first, then their actual priority, so we trade perfect strictness for relaxed priority semantics
+
+For example take an initial array of capacity 5 with these values
+
+7 2 5 3 null - epoch (0)
+
+A delete thread comes up and starts a merge and logically increases the epoch by 1. Values 7 to 3 are classified as being in the 0 epoch
+
+Hence if a later arriving priority value like `1` comes later, it is seen as a lower priority value as elements are classified by their epoch
+then actual priority. Relaxing strict correctness for perf
