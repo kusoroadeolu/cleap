@@ -4,10 +4,10 @@ import io.github.kusoroadeolu.cleap.Heap;
 import io.github.kusoroadeolu.cleap.dualarray.LockedPQ;
 import io.github.kusoroadeolu.cleap.dualarray.OrderedBoundedPQ;
 import io.github.kusoroadeolu.cleap.latest.EpochPQ;
+import io.github.kusoroadeolu.cleap.latest.PaddedArenaEpochPQ;
 import io.github.kusoroadeolu.cleap.latest.MpmcEpochPQ;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
-import org.openjdk.jmh.profile.JavaFlightRecorderProfiler;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
@@ -35,7 +35,7 @@ HeavyPollBench.eightThreads         EPO  thrpt   30  25.870 ± 0.454  ops/us
 public class HeavyPollBench {
     private Heap<Integer> queue;
 
-    @Param({"LOCK", "MPMC_EPO", "EPO"})
+    @Param({"PADDED_EPO", "EPO"})
     private String type;
 
     @Param({"32768", "65536"})
@@ -54,6 +54,7 @@ public class HeavyPollBench {
         queue = switch (type) {
             case "LOCK" -> new LockedPQ<>(cap);
             case "EPO" -> new EpochPQ<>(cap);
+            case "PADDED_EPO" -> new PaddedArenaEpochPQ<>(cap);
             case "MPMC_EPO" -> new MpmcEpochPQ<>(cap);
             case "OBQ" -> new OrderedBoundedPQ<>(cap);
             default -> throw new RuntimeException();
@@ -130,15 +131,6 @@ HeavyPollBench.eightThreads:p1.00       OBQ  sample           21561.344         
 
 /*
 * Benchmark                            (cap)  (type)    Mode      Cnt      Score   Error  Units
-HeavyPollBench.eightThreads          32768     EPO  sample  5933203      0.494 ± 0.028  us/op
-HeavyPollBench.eightThreads:p0.00    32768     EPO  sample                 ≈ 0          us/op
-HeavyPollBench.eightThreads:p0.50    32768     EPO  sample               0.100          us/op
-HeavyPollBench.eightThreads:p0.90    32768     EPO  sample               1.800          us/op
-HeavyPollBench.eightThreads:p0.95    32768     EPO  sample               1.800          us/op
-HeavyPollBench.eightThreads:p0.99    32768     EPO  sample               1.900          us/op
-HeavyPollBench.eightThreads:p0.999   32768     EPO  sample               7.496          us/op
-HeavyPollBench.eightThreads:p0.9999  32768     EPO  sample              78.592          us/op
-HeavyPollBench.eightThreads:p1.00    32768     EPO  sample           28016.640          us/op
 HeavyPollBench.eightThreads          32768    LOCK  sample  5819544      1.262 ± 0.014  us/op
 HeavyPollBench.eightThreads:p0.00    32768    LOCK  sample                 ≈ 0          us/op
 HeavyPollBench.eightThreads:p0.50    32768    LOCK  sample               0.100          us/op
@@ -149,15 +141,7 @@ HeavyPollBench.eightThreads:p0.999   32768    LOCK  sample              75.776  
 HeavyPollBench.eightThreads:p0.9999  32768    LOCK  sample             117.632          us/op
 HeavyPollBench.eightThreads:p1.00    32768    LOCK  sample            3776.512          us/op
 
-HeavyPollBench.eightThreads          65536     EPO  sample  5808270      0.487 ± 0.027  us/op
-HeavyPollBench.eightThreads:p0.00    65536     EPO  sample                 ≈ 0          us/op
-HeavyPollBench.eightThreads:p0.50    65536     EPO  sample               0.100          us/op
-HeavyPollBench.eightThreads:p0.90    65536     EPO  sample               1.800          us/op
-HeavyPollBench.eightThreads:p0.95    65536     EPO  sample               1.800          us/op
-HeavyPollBench.eightThreads:p0.99    65536     EPO  sample               1.900          us/op
-HeavyPollBench.eightThreads:p0.999   65536     EPO  sample               7.400          us/op
-HeavyPollBench.eightThreads:p0.9999  65536     EPO  sample              63.488          us/op
-HeavyPollBench.eightThreads:p1.00    65536     EPO  sample           20905.984          us/op
+
 HeavyPollBench.eightThreads          65536    LOCK  sample  5743508      1.300 ± 0.014  us/op
 HeavyPollBench.eightThreads:p0.00    65536    LOCK  sample                 ≈ 0          us/op
 HeavyPollBench.eightThreads:p0.50    65536    LOCK  sample               0.100          us/op
@@ -213,4 +197,53 @@ HeavyPollBench.eightThreads:p0.99    65536    MPMC  sample               1.600  
 HeavyPollBench.eightThreads:p0.999   65536    MPMC  sample               4.896          us/op
 HeavyPollBench.eightThreads:p0.9999  65536    MPMC  sample              25.184          us/op
 HeavyPollBench.eightThreads:p1.00    65536    MPMC  sample           20086.784          us/op
+* */
+
+/*
+* Benchmark                            (cap)      (type)    Mode      Cnt      Score   Error  Units
+HeavyPollBench.eightThreads          32768  PADDED_EPO  sample  5592031      0.467 ± 0.027  us/op
+HeavyPollBench.eightThreads:p0.00    32768  PADDED_EPO  sample                 ≈ 0          us/op
+HeavyPollBench.eightThreads:p0.50    32768  PADDED_EPO  sample               0.100          us/op
+HeavyPollBench.eightThreads:p0.90    32768  PADDED_EPO  sample               1.800          us/op
+HeavyPollBench.eightThreads:p0.95    32768  PADDED_EPO  sample               1.800          us/op
+HeavyPollBench.eightThreads:p0.99    32768  PADDED_EPO  sample               1.900          us/op
+HeavyPollBench.eightThreads:p0.999   32768  PADDED_EPO  sample               8.000          us/op
+HeavyPollBench.eightThreads:p0.9999  32768  PADDED_EPO  sample              76.646          us/op
+HeavyPollBench.eightThreads:p1.00    32768  PADDED_EPO  sample           16056.320          us/op
+HeavyPollBench.eightThreads          32768         EPO  sample  5910677      0.487 ± 0.024  us/op
+HeavyPollBench.eightThreads:p0.00    32768         EPO  sample                 ≈ 0          us/op
+HeavyPollBench.eightThreads:p0.50    32768         EPO  sample               0.100          us/op
+HeavyPollBench.eightThreads:p0.90    32768         EPO  sample               1.800          us/op
+HeavyPollBench.eightThreads:p0.95    32768         EPO  sample               1.800          us/op
+HeavyPollBench.eightThreads:p0.99    32768         EPO  sample               1.900          us/op
+HeavyPollBench.eightThreads:p0.999   32768         EPO  sample               8.127          us/op
+HeavyPollBench.eightThreads:p0.9999  32768         EPO  sample              71.296          us/op
+HeavyPollBench.eightThreads:p1.00    32768         EPO  sample           19365.888          us/op
+HeavyPollBench.eightThreads          65536  PADDED_EPO  sample  5642111      0.464 ± 0.029  us/op
+HeavyPollBench.eightThreads:p0.00    65536  PADDED_EPO  sample                 ≈ 0          us/op
+HeavyPollBench.eightThreads:p0.50    65536  PADDED_EPO  sample               0.100          us/op
+HeavyPollBench.eightThreads:p0.90    65536  PADDED_EPO  sample               1.700          us/op
+HeavyPollBench.eightThreads:p0.95    65536  PADDED_EPO  sample               1.800          us/op
+HeavyPollBench.eightThreads:p0.99    65536  PADDED_EPO  sample               1.800          us/op
+HeavyPollBench.eightThreads:p0.999   65536  PADDED_EPO  sample               8.288          us/op
+HeavyPollBench.eightThreads:p0.9999  65536  PADDED_EPO  sample              78.255          us/op
+HeavyPollBench.eightThreads:p1.00    65536  PADDED_EPO  sample           21757.952          us/op
+HeavyPollBench.eightThreads          65536         EPO  sample  5825476      0.538 ± 0.038  us/op
+HeavyPollBench.eightThreads:p0.00    65536         EPO  sample                 ≈ 0          us/op
+HeavyPollBench.eightThreads:p0.50    65536         EPO  sample               0.100          us/op
+HeavyPollBench.eightThreads:p0.90    65536         EPO  sample               1.800          us/op
+HeavyPollBench.eightThreads:p0.95    65536         EPO  sample               1.800          us/op
+HeavyPollBench.eightThreads:p0.99    65536         EPO  sample               1.900          us/op
+HeavyPollBench.eightThreads:p0.999   65536         EPO  sample               8.688          us/op
+HeavyPollBench.eightThreads:p0.9999  65536         EPO  sample              99.733          us/op
+HeavyPollBench.eightThreads:p1.00    65536         EPO  sample           29851.648          us/op
+* */
+
+
+/*
+* Benchmark                    (cap)      (type)   Mode  Cnt   Score   Error   Units
+HeavyPollBench.eightThreads  32768  PADDED_EPO  thrpt   30  28.407 ± 0.451  ops/us
+HeavyPollBench.eightThreads  32768         EPO  thrpt   30  25.207 ± 0.324  ops/us
+HeavyPollBench.eightThreads  65536  PADDED_EPO  thrpt   30  28.548 ± 0.441  ops/us
+HeavyPollBench.eightThreads  65536         EPO  thrpt   30  25.329 ± 0.287  ops/us
 * */

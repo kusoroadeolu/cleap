@@ -8,27 +8,25 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
-
 /**
- * Sequential (single-threaded) unit tests for EpochPQ.
+ * Sequential (single-threaded) unit tests for PaddedArenaEpochPQ.
  *
- * Note: EpochPQ.poll() has a lock-free "arena" fallback path meant for
+ * Note: PaddedArenaEpochPQ.poll() has a lock-free "arena" fallback path meant for
  * concurrent contention. In a single-threaded test, acquire() will always
  * succeed on first try, so we only ever exercise the fast path. The arena
  * fallback is NOT covered here and needs separate concurrent tests.
  */
 class EpochPQTest {
 
-    private EpochPQ<Integer> queue;
+    private PaddedArenaEpochPQ<Integer> queue;
 
     @BeforeEach
     void setUp() {
-        queue = new EpochPQ<>(16);
+        queue = new PaddedArenaEpochPQ<>(16);
     }
 
     // Fills the queue via offer() until it returns false, returning how many succeeded.
-    private int fillToCapacity(EpochPQ<Integer> q) {
+    private int fillToCapacity(PaddedArenaEpochPQ<Integer> q) {
         int count = 0;
         while (q.offer(count)) {
             count++;
@@ -97,7 +95,7 @@ class EpochPQTest {
     void poll_moreThanMergeLimit_stillReturnsAllSortedAcrossChunks() {
         // Use a larger queue so we can push past capacity/merge-limit boundaries
         // and verify chunked merging still produces a fully sorted drain.
-        EpochPQ<Integer> q = new EpochPQ<>(64);
+        PaddedArenaEpochPQ<Integer> q = new PaddedArenaEpochPQ<>(64);
         int n = fillToCapacity(q);
         assertTrue(n > 0);
 

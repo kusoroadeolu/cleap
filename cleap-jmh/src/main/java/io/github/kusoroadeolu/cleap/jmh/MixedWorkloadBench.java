@@ -1,10 +1,10 @@
 package io.github.kusoroadeolu.cleap.jmh;
 
 import io.github.kusoroadeolu.cleap.Heap;
-import io.github.kusoroadeolu.cleap.dualarray.LBBoundedPQ;
 import io.github.kusoroadeolu.cleap.dualarray.LockedPQ;
 import io.github.kusoroadeolu.cleap.dualarray.OrderedBoundedPQ;
 import io.github.kusoroadeolu.cleap.latest.EpochPQ;
+import io.github.kusoroadeolu.cleap.latest.PaddedArenaEpochPQ;
 import io.github.kusoroadeolu.cleap.latest.MpmcEpochPQ;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
@@ -85,7 +85,7 @@ MixedWorkloadBench.fourThreads       JDK  thrpt   30  18.096 ± 0.280  ops/us
 public class MixedWorkloadBench {
     private Heap<Integer> queue;
 
-    @Param({"LOCK", "MPMC_EPO", "EPO"})
+    @Param({"LOCK", "MPMC_EPO", "EPO", "PADDED_EPO"})
     private String type;
 
     @Param({"32768", "65536"})
@@ -101,6 +101,7 @@ public class MixedWorkloadBench {
         int cap = Integer.parseInt(this.cap);
         queue = switch (type) {
             case "LOCK" -> new LockedPQ<>(cap);
+            case "PADDED_EPO" -> new PaddedArenaEpochPQ<>(cap);
             case "EPO" -> new EpochPQ<>(cap);
             case "MPMC_EPO" -> new MpmcEpochPQ<>(cap);
             case "OBQ" -> new OrderedBoundedPQ<>(cap);
