@@ -5,7 +5,7 @@ import java.lang.invoke.VarHandle;
 
 public final class Utils {
     public static final int MAX_POW2 = 1 << 30;
-    public static final double MERGE_RATIO = 0.1;
+    public static final double MERGE_RATIO = 0.25;
     public static final long MERGE_CAP = 1000;
     public static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
     public static final int NCPU = Runtime.getRuntime().availableProcessors();
@@ -36,9 +36,17 @@ public final class Utils {
         }
     }
 
-    public static VarHandle arrayOffset() {
+    public static VarHandle objectArrayOffset() {
         try {
             return MethodHandles.arrayElementVarHandle(Object[].class);
+        }catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static VarHandle longArrayOffset() {
+        try {
+            return MethodHandles.arrayElementVarHandle(long[].class);
         }catch (Exception e) {
             throw new RuntimeException(e);
         }

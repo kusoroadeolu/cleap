@@ -7,7 +7,6 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicReferenceArray;
-import java.util.concurrent.locks.LockSupport;
 
 import static io.github.kusoroadeolu.cleap.latest.Utils.*;
 
@@ -326,7 +325,7 @@ public class EpochPQ<E> extends SharedConsumerFieldsRPad<E> implements Heap<E> {
 
     public E poll() {
         var arena = this.arena;
-        outer: for (;;) {
+        for (;;) {
             if (acquire()) {
                 try {
                     E elem = doPoll();
@@ -355,7 +354,7 @@ public class EpochPQ<E> extends SharedConsumerFieldsRPad<E> implements Heap<E> {
                         seen = loArenaElem(arena, index);
                         if (seen != WAITER) {
                             Object elem;
-                            while ((elem = arena.getAcquire(index)) == AWAIT) Thread.onSpinWait();
+                            while ((elem = loArenaElem(arena, index)) == AWAIT) Thread.onSpinWait();
                             soArenaElem(arena, index, null);
                             return elem == NONE ? null : (E) elem;
                         } else if ((spins >= SPINS_PER_SLOT) && casArenaElem(arena, index, WAITER, null)) {
@@ -371,10 +370,9 @@ public class EpochPQ<E> extends SharedConsumerFieldsRPad<E> implements Heap<E> {
                 }
             }
 
-            LockSupport.parkNanos(1);
-
         }
     }
+
 
     @Override
     public int size() {

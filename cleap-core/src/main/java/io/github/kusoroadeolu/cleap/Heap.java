@@ -9,5 +9,7 @@ public interface Heap<T> {
 
     int size();
 
-    default void clear() {}
+    default void clear() {
+        while (poll() != null) {}
+    }
 }
