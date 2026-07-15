@@ -1,7 +1,7 @@
-package io.github.kusoroadeolu.cleap.bounded;
+package io.github.kusoroadeolu.cleap.dualarray;
 
 import io.github.kusoroadeolu.cleap.Heap;
-import io.github.kusoroadeolu.cleap.bounded.LBBoundedPQ.DeleteArray.Status;
+import io.github.kusoroadeolu.cleap.dualarray.LBBoundedPQ.DeleteArray.Status;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import static io.github.kusoroadeolu.cleap.bounded.LBBoundedPQ.DeleteArray.State.*;
+import static io.github.kusoroadeolu.cleap.dualarray.LBBoundedPQ.DeleteArray.State.*;
 
 public class LBBoundedPQ<T> implements Heap<T> {
     private final InsertArray<T> insertArray;

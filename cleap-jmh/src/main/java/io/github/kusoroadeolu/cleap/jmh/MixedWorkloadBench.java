@@ -1,9 +1,8 @@
 package io.github.kusoroadeolu.cleap.jmh;
 
 import io.github.kusoroadeolu.cleap.Heap;
-import io.github.kusoroadeolu.cleap.bounded.CombiningLBBoundedPQ;
-import io.github.kusoroadeolu.cleap.bounded.LBBoundedPQ;
-import io.github.kusoroadeolu.cleap.bounded.LockedPQ;
+import io.github.kusoroadeolu.cleap.dualarray.LBBoundedPQ;
+import io.github.kusoroadeolu.cleap.dualarray.LockedPQ;
 import io.github.kusoroadeolu.cleap.latest.EpochPQ;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;

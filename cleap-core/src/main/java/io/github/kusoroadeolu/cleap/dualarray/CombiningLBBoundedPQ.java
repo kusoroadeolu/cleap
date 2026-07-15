@@ -1,4 +1,4 @@
-package io.github.kusoroadeolu.cleap.bounded;
+package io.github.kusoroadeolu.cleap.dualarray;
 
 import io.github.kusoroadeolu.cleap.Heap;
 

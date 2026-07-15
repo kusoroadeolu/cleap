@@ -1,4 +1,4 @@
-package io.github.kusoroadeolu.cleap.bounded;
+package io.github.kusoroadeolu.cleap.dualarray;
 
 import org.junit.jupiter.api.Test;
 

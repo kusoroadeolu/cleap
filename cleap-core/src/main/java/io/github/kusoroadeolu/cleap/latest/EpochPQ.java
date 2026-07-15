@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicReferenceArray;
+import java.util.concurrent.locks.LockSupport;
 
 import static io.github.kusoroadeolu.cleap.latest.Utils.*;
 
@@ -210,12 +211,13 @@ class SharedConsumerFields<E> extends MergeLimitRPad<E> {
 
     int state;
     final AtomicReferenceArray<Object> arena;
-    static final int ARENA_SIZE = Utils.NCPU;
+    static final VarHandle STATE = fieldOffset(SharedConsumerFields.class, "state", int.class);
+
+    static final int ARENA_SIZE = NCPU;
     static final int MASK = ARENA_SIZE - 1;
     static final Object WAITER = new Object();
     static final Object AWAIT = new Object();
     static final Object NONE = new Object();
-    static final VarHandle STATE = fieldOffset(SharedConsumerFields.class, "state", int.class);
     static final int SPINS_PER_SLOT = 200;
     static final int MAX_SPINS = NCPU * SPINS_PER_SLOT;
     static final int BACKOFF_SPINS = 40;
@@ -324,7 +326,7 @@ public class EpochPQ<E> extends SharedConsumerFieldsRPad<E> implements Heap<E> {
 
     public E poll() {
         var arena = this.arena;
-        for (;;) {
+        outer: for (;;) {
             if (acquire()) {
                 try {
                     E elem = doPoll();
@@ -349,25 +351,27 @@ public class EpochPQ<E> extends SharedConsumerFieldsRPad<E> implements Heap<E> {
                 var seen = loArenaElem(arena, index);
                 if (seen == null && casArenaElem(arena, index, null, WAITER)) {
                     int spins = 0;
-                         for (int backoffSpins = 0; ;) {
-                            seen = loArenaElem(arena, index);
-                            if (seen != WAITER) {
-                                Object elem;
-                                while ((elem = arena.getAcquire(index)) == AWAIT) Thread.onSpinWait();
-                                soArenaElem(arena, index, null);
-                                return elem == NONE ? null : (E) elem;
-                            } else if ((spins >= SPINS_PER_SLOT) && casArenaElem(arena, index, WAITER, null)) {
-                                totalSpins += spins;
-                                continue inner;
-                            }
-
-                            while (++backoffSpins <= BACKOFF_SPINS) Thread.onSpinWait(); //avoid repeated spins on index to prevent cache line thrashing
-
-                            spins += backoffSpins;
-                            backoffSpins = 0;
+                    for (int backoffSpins = 0; ;) {
+                        seen = loArenaElem(arena, index);
+                        if (seen != WAITER) {
+                            Object elem;
+                            while ((elem = arena.getAcquire(index)) == AWAIT) Thread.onSpinWait();
+                            soArenaElem(arena, index, null);
+                            return elem == NONE ? null : (E) elem;
+                        } else if ((spins >= SPINS_PER_SLOT) && casArenaElem(arena, index, WAITER, null)) {
+                            totalSpins += spins;
+                            continue inner;
                         }
+
+                        while (++backoffSpins <= BACKOFF_SPINS) Thread.onSpinWait(); //avoid repeated spins on index to prevent cache line thrashing
+
+                        spins += backoffSpins;
+                        backoffSpins = 0;
+                    }
                 }
             }
+
+            LockSupport.parkNanos(1);
 
         }
     }

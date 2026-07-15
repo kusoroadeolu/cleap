@@ -1,9 +1,8 @@
 package io.github.kusoroadeolu.cleap.jmh;
 
 import io.github.kusoroadeolu.cleap.Heap;
-import io.github.kusoroadeolu.cleap.bounded.CombiningLBBoundedPQ;
-import io.github.kusoroadeolu.cleap.bounded.LockedPQ;
-import io.github.kusoroadeolu.cleap.bounded.OrderedBoundedPQ;
+import io.github.kusoroadeolu.cleap.dualarray.LockedPQ;
+import io.github.kusoroadeolu.cleap.dualarray.OrderedBoundedPQ;
 import io.github.kusoroadeolu.cleap.latest.EpochPQ;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
@@ -34,8 +33,11 @@ HeavyPollBench.eightThreads         EPO  thrpt   30  25.870 ± 0.454  ops/us
 public class HeavyPollBench {
     private Heap<Integer> queue;
 
-    @Param({"EPO"})
+    @Param({"EPO", "LOCK", "OBQ"})
     private String type;
+
+    @Param({"32768", "65536"})
+    private String cap;
 
     @State(Scope.Thread)
     public static class ThreadState {
@@ -46,26 +48,20 @@ public class HeavyPollBench {
 
     @Setup
     public void setup() {
+        int cap = Integer.parseInt(this.cap);
         queue = switch (type) {
-            case "LOCK" -> new LockedPQ<>(10000);
-            case "EPO" -> new EpochPQ<>(10000);
-            case "ELB" -> new CombiningLBBoundedPQ<>(10000, 10);
-            case "OBQ" -> new OrderedBoundedPQ<>(10000);
-
-
+            case "LOCK" -> new LockedPQ<>(cap);
+            case "EPO" -> new EpochPQ<>(cap);
+            case "OBQ" -> new OrderedBoundedPQ<>(cap);
             default -> throw new RuntimeException();
         };
 
-        for (int i = 0; i < 1000; ++i) queue.add(ThreadLocalRandom.current().nextInt(1_000_000));
+        int to = cap / 2;
+        for (int i = 0; i < to; ++i) queue.add(ThreadLocalRandom.current().nextInt(1_000_000));
 
     }
 
 
-//    @Threads(4)
-//    @Benchmark
-//    public void fourThreads(Blackhole bh, ThreadState ts) {
-//        doWork(bh, ts);
-//    }
 
     @Threads(8)
     @Benchmark
@@ -73,9 +69,10 @@ public class HeavyPollBench {
         doWork(bh, ts);
     }
 
+
     private void doWork(Blackhole bh, ThreadState ts) {
         int next = ts.nextInt();
-        if (next >= 0 && next < 79) bh.consume(queue.poll());
+        if (next >= 0 && next <= 79) bh.consume(queue.poll());
        else bh.consume(queue.add(ThreadLocalRandom.current().nextInt(1_000_000)));
 
     }

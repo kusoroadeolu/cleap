@@ -1,8 +1,7 @@
-package io.github.kusoroadeolu.cleap.bounded;
+package io.github.kusoroadeolu.cleap.dualarray;
 
 import io.github.kusoroadeolu.cleap.Heap;
 
-import java.lang.invoke.VarHandle;
 import java.util.PriorityQueue;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;

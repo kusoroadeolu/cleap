@@ -1,6 +1,6 @@
 package io.github.kusoroadeolu.cleap.stress;
 
-import io.github.kusoroadeolu.cleap.bounded.LBBoundedPQ;
+import io.github.kusoroadeolu.cleap.dualarray.LBBoundedPQ;
 import org.openjdk.jcstress.annotations.*;
 import org.openjdk.jcstress.infra.results.II_Result;
 import org.openjdk.jcstress.infra.results.I_Result;
