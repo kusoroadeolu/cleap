@@ -241,6 +241,18 @@ class SharedConsumerFields<E> extends MergeLimitRPad<E> {
     public boolean isFree() {
         return (int) STATE.getAcquire(this) == 0;
     }
+
+    public Object loArenaElem(AtomicReferenceArray<Object> arena, int index) {
+        return arena.getAcquire(index);
+    }
+
+    public boolean casArenaElem(AtomicReferenceArray<Object> arena, int index, Object seen , Object to) {
+        return arena.compareAndSet(index, seen, to);
+    }
+
+    public void soArenaElem(AtomicReferenceArray<Object> arena, int index, Object o) {
+        arena.setRelease(index, o);
+    }
 }
 
 class SharedConsumerFieldsRPad<E> extends SharedConsumerFields<E> {
@@ -312,15 +324,15 @@ public class EpochPQ<E> extends SharedConsumerFieldsRPad<E> implements Heap<E> {
 
     public E poll() {
         var arena = this.arena;
-        outer: for (;;) {
+        for (;;) {
             if (acquire()) {
                 try {
                     E elem = doPoll();
                     for (int i = 0; i < arenaSize(); ++i) {
-                        Object o = arena.get(i);
-                        if (o == WAITER && arena.compareAndSet(i, WAITER, AWAIT)) {
+                        Object o = loArenaElem(arena, i);
+                        if (o == WAITER && casArenaElem(arena, i, WAITER, AWAIT)) {
                             E value = doPoll();
-                            arena.setRelease(i, value == null ? NONE : value);
+                            soArenaElem(arena, i, value == null ? NONE : value);
                         }
                     }
                     return elem;
@@ -334,17 +346,17 @@ public class EpochPQ<E> extends SharedConsumerFieldsRPad<E> implements Heap<E> {
             int arenaSize = arenaSize();
             inner: for (int step = 0, totalSpins = 0; (step < arenaSize) && (totalSpins < MAX_SPINS); step++) {
                 int index = (step + start) & MASK;
-                var seen = arena.getAcquire(index);
-                if (seen == null && arena.compareAndSet(index, null, WAITER)) {
+                var seen = loArenaElem(arena, index);
+                if (seen == null && casArenaElem(arena, index, null, WAITER)) {
                     int spins = 0;
                          for (int backoffSpins = 0; ;) {
-                            seen = arena.getAcquire(index);
+                            seen = loArenaElem(arena, index);
                             if (seen != WAITER) {
                                 Object elem;
                                 while ((elem = arena.getAcquire(index)) == AWAIT) Thread.onSpinWait();
-                                arena.setRelease(index, null);
+                                soArenaElem(arena, index, null);
                                 return elem == NONE ? null : (E) elem;
-                            } else if ((spins >= SPINS_PER_SLOT) && arena.compareAndSet(index, WAITER, null)) {
+                            } else if ((spins >= SPINS_PER_SLOT) && casArenaElem(arena, index, WAITER, null)) {
                                 totalSpins += spins;
                                 continue inner;
                             }
