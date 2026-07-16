@@ -1,6 +1,6 @@
 package io.github.kusoroadeolu.cleap.jmh;
 
-import io.github.kusoroadeolu.cleap.Heap;
+import io.github.kusoroadeolu.cleap.PriorityQueue;
 import io.github.kusoroadeolu.cleap.dualarray.LBBoundedPQ;
 import io.github.kusoroadeolu.cleap.dualarray.LockedPQ;
 import io.github.kusoroadeolu.cleap.dualarray.OrderedBoundedPQ;
@@ -20,7 +20,7 @@ import java.util.concurrent.TimeUnit;
 @Measurement(iterations = 10, time = 1)
 @Fork(3)
 public class InsertWorkloadBench {
-    private Heap<Integer> queue;
+    private PriorityQueue<Integer> queue;
 
 
     /*

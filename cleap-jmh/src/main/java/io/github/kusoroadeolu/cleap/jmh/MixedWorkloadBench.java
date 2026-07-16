@@ -1,6 +1,6 @@
 package io.github.kusoroadeolu.cleap.jmh;
 
-import io.github.kusoroadeolu.cleap.Heap;
+import io.github.kusoroadeolu.cleap.PriorityQueue;
 import io.github.kusoroadeolu.cleap.dualarray.LockedPQ;
 import io.github.kusoroadeolu.cleap.dualarray.OrderedBoundedPQ;
 import io.github.kusoroadeolu.cleap.latest.EpochPQ;
@@ -83,7 +83,7 @@ MixedWorkloadBench.fourThreads       JDK  thrpt   30  18.096 ± 0.280  ops/us
 * */
 
 public class MixedWorkloadBench {
-    private Heap<Integer> queue;
+    private PriorityQueue<Integer> queue;
 
     @Param({"LOCK", "MPMC_EPO", "EPO", "PADDED_EPO"})
     private String type;

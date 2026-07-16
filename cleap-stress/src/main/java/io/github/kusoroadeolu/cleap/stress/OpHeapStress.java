@@ -1,7 +1,7 @@
 package io.github.kusoroadeolu.cleap.stress;
 
-import io.github.kusoroadeolu.cleap.Heap;
-import io.github.kusoroadeolu.cleap.experimental.OptimisticConcurrentHeap;
+import io.github.kusoroadeolu.cleap.PriorityQueue;
+import io.github.kusoroadeolu.cleap.experimental.OptimisticConcurrentPriorityQueue;
 import org.openjdk.jcstress.annotations.*;
 import org.openjdk.jcstress.infra.results.I_Result;
 
@@ -20,23 +20,23 @@ public class OpHeapStress {
     @State
     //Assert deleted nodes are never inserted
      public static class DeletedNodeInvariant {
-        private Heap<Integer> heap;
+        private PriorityQueue<Integer> priorityQueue;
 
 
         public DeletedNodeInvariant() {
-            this.heap = new OptimisticConcurrentHeap<>(List.of(1, 2, 3));
+            this.priorityQueue = new OptimisticConcurrentPriorityQueue<>(List.of(1, 2, 3));
         }
 
         @Actor
         public void poller(){
-            heap.poll();
+            priorityQueue.poll();
         }
 
 
         @Arbiter
         public void arbiter(I_Result res) {
-            heap.add(0);
-            if (heap.peek() != 3) res.r1 = 1;
+            priorityQueue.add(0);
+            if (priorityQueue.peek() != 3) res.r1 = 1;
             else res.r1 = 0;
         }
 
@@ -48,22 +48,22 @@ public class OpHeapStress {
     @State
     //Assert size isn't incremented or decremented if nothing is in the actual priority queue
     public static class EmptyHeapInvariant {
-        private Heap<Integer> heap;
+        private PriorityQueue<Integer> priorityQueue;
 
 
         public EmptyHeapInvariant() {
-            this.heap = new OptimisticConcurrentHeap<>(List.of(1, 2, 3));
+            this.priorityQueue = new OptimisticConcurrentPriorityQueue<>(List.of(1, 2, 3));
         }
 
         @Actor
         public void poller(){
-            heap.poll();
+            priorityQueue.poll();
         }
 
 
         @Arbiter
         public void arbiter(I_Result res) {
-            res.r1 = heap.size();
+            res.r1 = priorityQueue.size();
         }
 
     }

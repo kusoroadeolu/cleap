@@ -1,11 +1,10 @@
 package io.github.kusoroadeolu.cleap.latest;
 
 
-import io.github.kusoroadeolu.cleap.Heap;
+import io.github.kusoroadeolu.cleap.PriorityQueue;
 
 import java.lang.invoke.VarHandle;
 import java.util.Arrays;
-import java.util.concurrent.locks.LockSupport;
 
 import static io.github.kusoroadeolu.cleap.latest.Utils.*;
 
@@ -240,7 +239,7 @@ class StatusFieldRPad<E> extends MpmcStatusField<E> {
 
 
 
-public class MpmcEpochPQ<E> extends StatusFieldRPad<E> implements Heap<E> {
+public class MpmcEpochPQ<E> extends StatusFieldRPad<E> implements PriorityQueue<E> {
 
     public MpmcEpochPQ(int capacity) {
         super(capacity);
@@ -263,7 +262,7 @@ public class MpmcEpochPQ<E> extends StatusFieldRPad<E> implements Heap<E> {
             seq = lvSequence(sequence, offset);
 
 
-            if (seq < pIndex) {
+            if (seq < pIndex) { //lagging consumer yet to update seq or no consumer
                 long available = pIndex - (mask + 1);
                 if (available >= cIndex && available >= (cIndex = lvConsumerIndex())) return false;
                 else seq = pIndex + 1;
@@ -288,7 +287,7 @@ public class MpmcEpochPQ<E> extends StatusFieldRPad<E> implements Heap<E> {
         long pIndex = -1;
         int offset;
         long sortedIndex;
-         Status s = lvStatus();
+        Status s = lvStatus();
 
         for (;;) {
             cIndex = lvConsumerIndex();
@@ -297,8 +296,7 @@ public class MpmcEpochPQ<E> extends StatusFieldRPad<E> implements Heap<E> {
             expected = cIndex + 1; //seq at this offset should be exactly +1 of the offset value
             sortedIndex = s.sortedIndex;
 
-            if (cIndex >= sortedIndex) { //status is stale
-
+            if (cIndex >= sortedIndex) { // '>' status is stale, == 'try merge' status
                 if (cIndex == (pIndex = lvProducerIndex())) return null;
 
                 if (s.lvState() == State.NONE && s.casState(State.NONE, State.MERGING)) {
@@ -331,13 +329,6 @@ public class MpmcEpochPQ<E> extends StatusFieldRPad<E> implements Heap<E> {
         soSequence(sequence, offset, cIndex + mask + 1);
         return elem;
     }
-
-
-    @Override
-    public E peek() {
-        return null;
-    }
-
 
     @Override
     public int size() {

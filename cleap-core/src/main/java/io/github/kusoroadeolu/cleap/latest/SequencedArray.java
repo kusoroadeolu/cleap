@@ -1,7 +1,6 @@
 package io.github.kusoroadeolu.cleap.latest;
 
 import java.lang.invoke.VarHandle;
-import java.lang.reflect.Array;
 import java.util.Arrays;
 
 import static io.github.kusoroadeolu.cleap.latest.Utils.roundToPowerOfTwo;

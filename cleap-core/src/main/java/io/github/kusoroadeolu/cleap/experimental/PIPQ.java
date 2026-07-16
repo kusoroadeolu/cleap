@@ -1,14 +1,13 @@
 package io.github.kusoroadeolu.cleap.experimental;
 
 
-import io.github.kusoroadeolu.cleap.Heap;
+import io.github.kusoroadeolu.cleap.PriorityQueue;
 import io.github.kusoroadeolu.cleap.experimental.LeaderList.Node;
 import io.github.kusoroadeolu.cleap.experimental.LeaderList.WQNode;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.Comparator;
-import java.util.PriorityQueue;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -43,7 +42,7 @@ import java.util.concurrent.locks.ReentrantLock;
 * Another issue i came across is one where the counter of a segment could be decremented twice (rather than once), when an inserting thread upserts a value when segment.count == CNTR_MAX
 * This could occur if the segment value didn't check if the llv had been logically deleted before add the llv to the queue after moving it downwards
 * */
-public class PIPQ<T> implements Heap<T> {
+public class PIPQ<T> implements PriorityQueue<T> {
 
     private final int ncpu;
     private final WorkerPQSegment<T>[] workerQueues;
@@ -307,11 +306,6 @@ public class PIPQ<T> implements Heap<T> {
         } else return cmp.compare(k, t);
     }
 
-    @Override
-    public T peek() {
-        return null;
-    }
-
 
     @Override
     public int size() {
@@ -324,13 +318,13 @@ public class PIPQ<T> implements Heap<T> {
     }
 
     private static class WorkerPQFields<T> extends WorkerPQLPad{
-        final PriorityQueue<T> queue;
+        final java.util.PriorityQueue<T> queue;
         final Lock lock;
         T largestListValue; //Lowest prio value in the list for this pq
         volatile int segmentCount; //Number of values related to this segment in the shared list
 
         public WorkerPQFields(Comparator<T> comparator) {
-            queue = new PriorityQueue<>(1, comparator);
+            queue = new java.util.PriorityQueue<>(1, comparator);
             lock = new ReentrantLock();
         }
 

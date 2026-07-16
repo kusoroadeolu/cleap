@@ -1,13 +1,12 @@
 package io.github.kusoroadeolu.cleap.experimental;
 
 
-import io.github.kusoroadeolu.cleap.Heap;
+import io.github.kusoroadeolu.cleap.PriorityQueue;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.Collections;
 import java.util.Objects;
-import java.util.PriorityQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -49,17 +48,17 @@ import java.util.concurrent.locks.ReentrantLock;
  *   Peek the head of the priority queue
  *   Release the lock
  * */
-public class StagedConcurrentHeap<T extends Comparable<T>> implements Heap<T> {
+public class StagedConcurrentPriorityQueue<T extends Comparable<T>> implements PriorityQueue<T> {
 
     private final Lock lock;
     private final MPSCStack<T> stack;
-    private final PriorityQueue<T> queue;
+    private final java.util.PriorityQueue<T> queue;
     private final AtomicInteger size;
 
-    public StagedConcurrentHeap() {
+    public StagedConcurrentPriorityQueue() {
         this.lock = new ReentrantLock();
         this.stack = new MPSCStack<>();
-        this.queue = new PriorityQueue<>(Collections.reverseOrder());
+        this.queue = new java.util.PriorityQueue<>(Collections.reverseOrder());
         this.size = new AtomicInteger();
     }
 
@@ -71,7 +70,7 @@ public class StagedConcurrentHeap<T extends Comparable<T>> implements Heap<T> {
         s.casToHead(node); //Cas to head
 
         if (l.tryLock()) {
-            PriorityQueue<T> q = queue;
+            java.util.PriorityQueue<T> q = queue;
             AtomicInteger i = size;
             try {
                 insertToPQ(s, q, i);
@@ -83,19 +82,6 @@ public class StagedConcurrentHeap<T extends Comparable<T>> implements Heap<T> {
         return false;
     }
 
-
-    //Stale peeks are allowed as a relaxed invariant. However I could stricten the invariants
-    @Override
-    public T peek() {
-        Lock l = lock;
-        try {
-            l.lock();
-            return queue.peek();
-        }finally {
-            l.unlock();
-        }
-    }
-
     @Override
     public T poll() {
         Lock l = lock;
@@ -103,7 +89,7 @@ public class StagedConcurrentHeap<T extends Comparable<T>> implements Heap<T> {
         try {
             l.lock();
             AtomicInteger i = size;
-            PriorityQueue<T> q = queue;
+            java.util.PriorityQueue<T> q = queue;
             insertToPQ(s, q, i);
             T val = q.poll();
             if (val != null) i.decrementAndGet();
@@ -115,7 +101,7 @@ public class StagedConcurrentHeap<T extends Comparable<T>> implements Heap<T> {
     }
 
     //Only inserted by lock holders
-    void insertToPQ(MPSCStack<T> s, PriorityQueue<T> q, AtomicInteger i){
+    void insertToPQ(MPSCStack<T> s, java.util.PriorityQueue<T> q, AtomicInteger i){
         Node<T> n = s.detachHead();
         Node<T> next;
         int count = 0;

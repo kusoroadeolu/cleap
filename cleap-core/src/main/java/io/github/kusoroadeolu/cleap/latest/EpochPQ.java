@@ -1,6 +1,6 @@
 package io.github.kusoroadeolu.cleap.latest;
 
-import io.github.kusoroadeolu.cleap.Heap;
+import io.github.kusoroadeolu.cleap.PriorityQueue;
 
 import java.lang.invoke.VarHandle;
 import java.util.Arrays;
@@ -17,13 +17,13 @@ class EpochSharedConsumerFields<E> extends MergeLimitRPad<E> {
     final AtomicReferenceArray<Object> arena;
     static final VarHandle STATE = fieldOffset(EpochSharedConsumerFields.class, "state", int.class);
 
-    static final int ARENA_SIZE = NCPU;
+    static final int ARENA_SIZE = Utils.roundToPowerOfTwo(NCPU);
     static final int MASK = ARENA_SIZE - 1;
     static final Object WAITER = new Object();
     static final Object AWAIT = new Object();
     static final Object NONE = new Object();
     static final int SPINS_PER_SLOT = 200;
-    static final int MAX_SPINS = NCPU * SPINS_PER_SLOT;
+    static final int MAX_SPINS = ARENA_SIZE * SPINS_PER_SLOT;
     static final int BACKOFF_SPINS = 40;
 
 
@@ -85,7 +85,7 @@ class EpochSharedConsumerFieldsRPad<E> extends EpochSharedConsumerFields<E> {
 }
 
 
-public class EpochPQ<E> extends EpochSharedConsumerFieldsRPad<E> implements Heap<E> {
+public class EpochPQ<E> extends EpochSharedConsumerFieldsRPad<E> implements PriorityQueue<E> {
 
     public EpochPQ(int capacity) {
         super(capacity);
@@ -243,12 +243,6 @@ public class EpochPQ<E> extends EpochSharedConsumerFieldsRPad<E> implements Heap
         }
 
         return mmg;
-    }
-
-
-    @Override
-    public E peek() {
-        return null;
     }
 
     public String toString() {

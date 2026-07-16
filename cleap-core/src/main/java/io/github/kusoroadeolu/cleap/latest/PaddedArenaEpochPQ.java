@@ -1,6 +1,6 @@
 package io.github.kusoroadeolu.cleap.latest;
 
-import io.github.kusoroadeolu.cleap.Heap;
+import io.github.kusoroadeolu.cleap.PriorityQueue;
 import io.github.kusoroadeolu.cleap.latest.PaddedArenaEpochPQ.ArenaObject;
 
 import java.lang.invoke.VarHandle;
@@ -212,13 +212,13 @@ class SharedConsumerFields<E> extends MergeLimitRPad<E> {
     final ArenaObject[] arena;
     static final VarHandle STATE = fieldOffset(SharedConsumerFields.class, "state", int.class);
 
-    static final int ARENA_SIZE = NCPU;
+    static final int ARENA_SIZE = Utils.roundToPowerOfTwo(NCPU);
     static final int MASK = ARENA_SIZE - 1;
     static final Object WAITER = new Object();
     static final Object AWAIT = new Object();
     static final Object NONE = new Object();
     static final int SPINS_PER_SLOT = 200;
-    static final int MAX_SPINS = NCPU * SPINS_PER_SLOT;
+    static final int MAX_SPINS = ARENA_SIZE * SPINS_PER_SLOT;
     static final int BACKOFF_SPINS = 40;
 
 
@@ -272,7 +272,7 @@ class SharedConsumerFieldsRPad<E> extends SharedConsumerFields<E> {
 }
 
 
-public class PaddedArenaEpochPQ<E> extends SharedConsumerFieldsRPad<E> implements Heap<E> {
+public class PaddedArenaEpochPQ<E> extends SharedConsumerFieldsRPad<E> implements PriorityQueue<E> {
 
     public PaddedArenaEpochPQ(int capacity) {
         super(capacity);
@@ -431,12 +431,6 @@ public class PaddedArenaEpochPQ<E> extends SharedConsumerFieldsRPad<E> implement
         }
 
         return mmg;
-    }
-
-
-    @Override
-    public E peek() {
-        return null;
     }
 
     public String toString() {

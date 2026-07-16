@@ -1,12 +1,12 @@
 package io.github.kusoroadeolu.cleap.dualarray;
 
-import io.github.kusoroadeolu.cleap.Heap;
+import io.github.kusoroadeolu.cleap.PriorityQueue;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.Arrays;
 
-public class OrderedBoundedPQ<T> implements Heap<T> {
+public class OrderedBoundedPQ<T> implements PriorityQueue<T> {
     final FixedPriorityQueue<T> pq;
     final Object lock;
     final int capacity;
@@ -33,11 +33,6 @@ public class OrderedBoundedPQ<T> implements Heap<T> {
             I_INDEX.setRelease(da, 1);
             return true;
         }
-    }
-
-    @Override
-    public T peek() {
-        return null;
     }
 
     @Override

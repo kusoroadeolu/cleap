@@ -1,19 +1,19 @@
 package io.github.kusoroadeolu.cleap.jmh;
 
-import io.github.kusoroadeolu.cleap.Heap;
+import io.github.kusoroadeolu.cleap.PriorityQueue;
 
 import java.util.concurrent.PriorityBlockingQueue;
 
-public class JDKHeap<T> implements Heap<T> {
+public class JDKPriorityQueue<T> implements PriorityQueue<T> {
 
     private final PriorityBlockingQueue<T> queue;
 
-    public JDKHeap(PriorityBlockingQueue<T> queue) {
+    public JDKPriorityQueue(PriorityBlockingQueue<T> queue) {
         this.queue = queue;
     }
 
 
-    public JDKHeap() {
+    public JDKPriorityQueue() {
         this.queue = new PriorityBlockingQueue<>();
     }
 

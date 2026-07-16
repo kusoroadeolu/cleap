@@ -1,6 +1,6 @@
 package io.github.kusoroadeolu.cleap.experimental;
 
-import io.github.kusoroadeolu.cleap.Heap;
+import io.github.kusoroadeolu.cleap.PriorityQueue;
 
 import java.util.Arrays;
 
@@ -11,13 +11,13 @@ import java.util.Arrays;
 *   insert: adding a new key to the heap (a.k.a., push[4])
 *   extract-max : returns the node of maximum value from a max heap after removing it from the heap (a.k.a., pop[5])
 * */
-public class BoundedArrayHeap<T extends Comparable<T>> implements Heap<T> {
+public class BoundedArrayPriorityQueue<T extends Comparable<T>> implements PriorityQueue<T> {
     private final Object[] items;
     private final int capacity;
     private int size;
 
     //Array size should always be 2 ^ n - 1
-    public BoundedArrayHeap(int capacity) {
+    public BoundedArrayPriorityQueue(int capacity) {
         int pow2 = 1 << (32 - Integer.numberOfLeadingZeros(capacity - 1));
         items = new Object[this.capacity = (pow2 - 1)];
     }
@@ -62,12 +62,6 @@ public class BoundedArrayHeap<T extends Comparable<T>> implements Heap<T> {
         }
 
         return true;
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    public T peek(){
-        return (T) items[0];
     }
 
     @SuppressWarnings("unchecked")

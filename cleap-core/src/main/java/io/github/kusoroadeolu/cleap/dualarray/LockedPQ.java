@@ -1,14 +1,13 @@
 package io.github.kusoroadeolu.cleap.dualarray;
 
-import io.github.kusoroadeolu.cleap.Heap;
+import io.github.kusoroadeolu.cleap.PriorityQueue;
 
-import java.util.PriorityQueue;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class LockedPQ<T> implements Heap<T> {
+public class LockedPQ<T> implements PriorityQueue<T> {
     final Lock lock = new ReentrantLock();
-    final PriorityQueue<T> queue = new PriorityQueue<>();
+    final java.util.PriorityQueue<T> queue = new java.util.PriorityQueue<>();
     final int capacity;
 
     public LockedPQ(int capacity) {
@@ -27,11 +26,6 @@ public class LockedPQ<T> implements Heap<T> {
         }finally {
             l.unlock();
         }
-    }
-
-    @Override
-    public T peek() {
-        return null;
     }
 
     @Override

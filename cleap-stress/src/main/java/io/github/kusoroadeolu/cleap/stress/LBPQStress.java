@@ -60,7 +60,7 @@ public class LBPQStress {
 
         @Arbiter
         public void arbiter(I_Result res) {
-            Set<Integer> all = new HashSet<>(heap.toList());
+            Set<Integer> all = new HashSet<>(heap.drain());
             all.addAll(seen);
 
             Set<Integer> added = new HashSet<>(queue);

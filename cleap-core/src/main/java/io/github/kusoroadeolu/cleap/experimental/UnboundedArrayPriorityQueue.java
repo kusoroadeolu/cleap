@@ -1,17 +1,17 @@
 package io.github.kusoroadeolu.cleap.experimental;
 
-import io.github.kusoroadeolu.cleap.Heap;
+import io.github.kusoroadeolu.cleap.PriorityQueue;
 
 import java.util.Arrays;
 
 //Same mech as a bounded array heap, but with a grow method if the array overflows
-public class UnboundedArrayHeap<T extends Comparable<T>> implements Heap<T> {
+public class UnboundedArrayPriorityQueue<T extends Comparable<T>> implements PriorityQueue<T> {
     private Object[] tree;
     private int capacity;
     private int size;
 
     //Array size should always be 2 ^ n - 1
-    public UnboundedArrayHeap(int initialCap) {
+    public UnboundedArrayPriorityQueue(int initialCap) {
         int pow2 = 1 << (32 - Integer.numberOfLeadingZeros(initialCap - 1));
         tree = new Object[capacity = (pow2 - 1)];
     }
@@ -43,12 +43,6 @@ public class UnboundedArrayHeap<T extends Comparable<T>> implements Heap<T> {
         tree = Arrays.copyOf(tree, newCapacity);
         capacity = newCapacity;
 
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    public T peek(){
-        return (T) tree[0];
     }
 
     @SuppressWarnings("unchecked")

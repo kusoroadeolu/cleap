@@ -1,6 +1,6 @@
 package io.github.kusoroadeolu.cleap.dualarray;
 
-import io.github.kusoroadeolu.cleap.Heap;
+import io.github.kusoroadeolu.cleap.PriorityQueue;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class CombiningLBBoundedPQ<T> implements Heap<T> {
+public class CombiningLBBoundedPQ<T> implements PriorityQueue<T> {
     private final InsertArray<T> insertArray;
     private final Comparator<T> nullReverseComparator; //Packs the bottom of an array with nulls
     private volatile DeleteArray<T> deleteArray;
@@ -191,7 +191,7 @@ public class CombiningLBBoundedPQ<T> implements Heap<T> {
                         }
                         //Need to include these extra result checks otherwise, we might loop 4ever
 
-                        Thread.onSpinWait();
+
                     }
                 }
 
@@ -245,7 +245,7 @@ public class CombiningLBBoundedPQ<T> implements Heap<T> {
     }
 
 
-    public List<T> toList() {
+    public List<T> drain() {
         var da = deleteArray;
         var ia = insertArray;
         List<T> list = new ArrayList<>();
@@ -282,10 +282,6 @@ public class CombiningLBBoundedPQ<T> implements Heap<T> {
         return deleteArray;
     }
 
-    @Override
-    public T peek() {
-        return null;
-    }
 
     int compare(T a, T b) {
         return ((Comparable<T>) a).compareTo(b);

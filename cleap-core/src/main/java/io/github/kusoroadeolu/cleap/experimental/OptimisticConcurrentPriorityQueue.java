@@ -1,13 +1,12 @@
 package io.github.kusoroadeolu.cleap.experimental;
 
-import io.github.kusoroadeolu.cleap.Heap;
+import io.github.kusoroadeolu.cleap.PriorityQueue;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Objects;
-import java.util.PriorityQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -51,20 +50,20 @@ import java.util.concurrent.locks.ReentrantLock;
  *
  * Polls and peeks are allowed to lag behind
  * */
-public class OptimisticConcurrentHeap<T extends Comparable<T>> implements Heap<T> {
+public class OptimisticConcurrentPriorityQueue<T extends Comparable<T>> implements PriorityQueue<T> {
     private final Lock lock;
     private final MPSCStack<T> stack;
-    private final PriorityQueue<T> queue;
+    private final java.util.PriorityQueue<T> queue;
     private final AtomicInteger size;
 
-    public OptimisticConcurrentHeap() {
+    public OptimisticConcurrentPriorityQueue() {
         this(Collections.emptyList());
     }
 
-    public OptimisticConcurrentHeap(Collection<T> collection) {
+    public OptimisticConcurrentPriorityQueue(Collection<T> collection) {
         this.lock = new ReentrantLock();
         this.stack = new MPSCStack<>();
-        this.queue = new PriorityQueue<>(Collections.reverseOrder());
+        this.queue = new java.util.PriorityQueue<>(Collections.reverseOrder());
         this.size = new AtomicInteger();
         for (T t : collection) {
             stack.casToHead(new Node<>(t));
@@ -80,7 +79,7 @@ public class OptimisticConcurrentHeap<T extends Comparable<T>> implements Heap<T
         s.casToHead(node); //Cas to head
 
         if (l.tryLock()) {
-            PriorityQueue<T> q = queue;
+            java.util.PriorityQueue<T> q = queue;
             AtomicInteger i = size;
             try {
                 insertToPQ(s, q, i);
@@ -93,33 +92,13 @@ public class OptimisticConcurrentHeap<T extends Comparable<T>> implements Heap<T
         return false;
     }
 
-
-    //Stale peeks aren't allowed here, though peeks can lag behind
-    @Override
-    public T peek() {
-        Lock l = lock;
-        MPSCStack<T> s = stack;
-        l.lock();
-        try {
-            PriorityQueue<T> q = queue;
-            Node<T> hpNode = findHighestPriorityNode(s);
-            T val = q.peek();
-            if (hpNode == null) return val;
-            if (val == null) return hpNode.value;
-            if (hpNode.value.compareTo(val) > 0) return hpNode.value;
-            return val;
-        }finally {
-            l.unlock();
-        }
-    }
-
     @Override
     public T poll() {
         Lock l = lock;
         MPSCStack<T> s = stack;
         l.lock();
         try {
-            PriorityQueue<T> q = queue;
+            java.util.PriorityQueue<T> q = queue;
             Node<T> hpNode = findHighestPriorityNode(s);
             T val = q.peek();
 
@@ -155,7 +134,7 @@ public class OptimisticConcurrentHeap<T extends Comparable<T>> implements Heap<T
     }
 
     //Only inserted by lock holders
-    void insertToPQ(MPSCStack<T> s, PriorityQueue<T> q, AtomicInteger i){
+    void insertToPQ(MPSCStack<T> s, java.util.PriorityQueue<T> q, AtomicInteger i){
         Node<T> n = s.detachHead();
         Node<T> next;
         int count = 0;

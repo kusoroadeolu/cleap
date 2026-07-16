@@ -3,7 +3,7 @@ package io.github.kusoroadeolu.cleap.experimental;
 
 // An unbounded node based heap
 
-import io.github.kusoroadeolu.cleap.Heap;
+import io.github.kusoroadeolu.cleap.PriorityQueue;
 
 import java.util.Objects;
 
@@ -11,7 +11,7 @@ import java.util.Objects;
 * A binary tree based heap
 *
 * */
-public class UnboundedBTHeap<T extends Comparable<T>> implements Heap<T> {
+public class UnboundedBTPriorityQueue<T extends Comparable<T>> implements PriorityQueue<T> {
 
     private Node<T> head; //Starts as null
     private int size;
@@ -112,13 +112,6 @@ public class UnboundedBTHeap<T extends Comparable<T>> implements Heap<T> {
             next = prev.next();
         }
 
-    }
-
-
-    @Override
-    public T peek() {
-        if (head == null) return null;
-        else return head.value;
     }
 
     @Override

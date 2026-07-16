@@ -1,6 +1,6 @@
 package io.github.kusoroadeolu.cleap.dualarray;
 
-import io.github.kusoroadeolu.cleap.Heap;
+import io.github.kusoroadeolu.cleap.PriorityQueue;
 import io.github.kusoroadeolu.cleap.dualarray.LBBoundedPQ.DeleteArray.Status;
 
 import java.lang.invoke.MethodHandles;
@@ -14,7 +14,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static io.github.kusoroadeolu.cleap.dualarray.LBBoundedPQ.DeleteArray.State.*;
 
-public class LBBoundedPQ<T> implements Heap<T> {
+public class LBBoundedPQ<T> implements PriorityQueue<T> {
     private final InsertArray<T> insertArray;
     private final Comparator<T> nullReverseComparator; //Packs the bottom of an array with nulls
     private DeleteArray<T> deleteArray;
@@ -205,7 +205,7 @@ public class LBBoundedPQ<T> implements Heap<T> {
     }
 
 
-    public List<T> toList() {
+    public List<T> drain() {
         var da = (DeleteArray<T>) D_ARR.getAcquire(this);
         var ia = insertArray;
         List<T> list = new ArrayList<>();
@@ -239,11 +239,6 @@ public class LBBoundedPQ<T> implements Heap<T> {
 
     DeleteArray<T> deleteArray() {
         return deleteArray;
-    }
-
-    @Override
-    public T peek() {
-        return null;
     }
 
     int compare(T a, T b) {
