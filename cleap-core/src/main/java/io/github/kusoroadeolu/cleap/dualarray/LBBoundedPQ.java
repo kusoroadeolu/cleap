@@ -251,7 +251,7 @@ public class LBBoundedPQ<T> implements PriorityQueue<T> {
             var da = (DeleteArray<T>) D_ARR.getVolatile(this);
             var s = da.status;
             if (s.state == MERGED) continue;
-            return da.loIIndex() + (da.size() - da.status.dIndex);
+            return da.loIIndex() + da.size();
         }
     }
 

@@ -24,10 +24,6 @@ public class JDKPriorityQueue<T> implements PriorityQueue<T> {
         return queue.offer(t);
     }
 
-    @Override
-    public T peek() {
-        return queue.peek();
-    }
 
     @Override
     public T poll() {

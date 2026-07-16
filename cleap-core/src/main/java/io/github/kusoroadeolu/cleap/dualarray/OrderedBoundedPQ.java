@@ -40,11 +40,11 @@ public class OrderedBoundedPQ<T> implements PriorityQueue<T> {
         DeleteArray<T> da;
             for (;;) {
                 da = (DeleteArray<T>) D_ARR.getAcquire(this);
-                var s = lvState(da);
+                var s = loState(da);
 
                 if (s != State.NONE) {
                     if (s == State.MERGED) continue;
-                    while (lvState(da) == State.MERGING) Thread.onSpinWait();
+                    while (loState(da) == State.MERGING) Thread.onSpinWait();
                     continue;
                 }
 
@@ -59,9 +59,9 @@ public class OrderedBoundedPQ<T> implements PriorityQueue<T> {
 
                 else if (idx == 0) return null;
 
-                if ((s = lvState(da)) != State.NONE || !casState(s, State.MERGING, da)) {
+                if ((s = loState(da)) != State.NONE || !casState(s, State.MERGING, da)) {
                     if (s == State.MERGED) continue;
-                    while (lvState(da) == State.MERGING) Thread.onSpinWait();
+                    while (loState(da) == State.MERGING) Thread.onSpinWait();
                     continue;
                 }
 
@@ -93,11 +93,14 @@ public class OrderedBoundedPQ<T> implements PriorityQueue<T> {
 
     @Override
     public int size() {
-        return 0;
+        synchronized (lock) {
+            var da = deleteArray;
+            return da.insertIndex + (capacity - da.deleteIndex);
+        }
     }
 
 
-    State lvState(DeleteArray<T> da) {
+    State loState(DeleteArray<T> da) {
         return (State) STATE.getAcquire(da);
     }
 

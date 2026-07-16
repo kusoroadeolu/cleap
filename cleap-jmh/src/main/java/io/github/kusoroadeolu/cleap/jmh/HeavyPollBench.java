@@ -3,7 +3,7 @@ package io.github.kusoroadeolu.cleap.jmh;
 import io.github.kusoroadeolu.cleap.PriorityQueue;
 import io.github.kusoroadeolu.cleap.dualarray.CombiningLBBoundedPQ;
 import io.github.kusoroadeolu.cleap.dualarray.LBBoundedPQ;
-import io.github.kusoroadeolu.cleap.dualarray.LockedPQ;
+import io.github.kusoroadeolu.cleap.experimental.LockedPQ;
 import io.github.kusoroadeolu.cleap.dualarray.OrderedBoundedPQ;
 import io.github.kusoroadeolu.cleap.latest.EpochPQ;
 import io.github.kusoroadeolu.cleap.latest.PaddedArenaEpochPQ;
@@ -16,6 +16,7 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.LockSupport;
 
 
 @BenchmarkMode(Mode.Throughput)
@@ -23,15 +24,19 @@ import java.util.concurrent.TimeUnit;
 @State(Scope.Benchmark)
 @Warmup(iterations = 10, time = 1)
 @Measurement(iterations = 10, time = 1)
-@Fork(3)
+@Fork(2)
 public class HeavyPollBench {
     private PriorityQueue<Integer> queue;
+    private volatile boolean running;
+    private Thread refiller;
 
-    @Param({"OBQ", "ELB", "LB", "LOCK", "MPMC_EPO", "EPO", "PADDED_EPO"})
+    @Param({ "LOCK", "MPMC_EPO", "PADDED_EPO"})
     private String type;
 
-    @Param({"32768", "65536"})
+    @Param({"65536"})
     private String cap;
+
+    private volatile int capInt;
 
     @State(Scope.Thread)
     public static class ThreadState {
@@ -57,30 +62,77 @@ public class HeavyPollBench {
 
         int to = cap / 2;
         for (int i = 0; i < to; ++i) queue.add(ThreadLocalRandom.current().nextInt(1_000_000));
-
+        capInt = cap;
+        running = true;
+        startBackgroundRefiller();
     }
 
+    void startBackgroundRefiller() {
+        refiller = new Thread(() -> {
+            ThreadLocalRandom r = ThreadLocalRandom.current();
+            int target = capInt / 2; //
+            long minSleepNanos = 5_000;
+            long maxSleepNanos = 200_000;
 
+            while (running) {
+                int size = queue.size();
+                queue.add(r.nextInt(1_000_000));
+
+                double deficit = Math.max(0, Math.min(1, (target - size) / (double) target));
+                // deficit near 1 -> queue very empty -> sleep short (refill fast)
+                // deficit near 0 -> queue at/above target -> sleep long (back off)
+                long sleep = (long) (maxSleepNanos - deficit * (maxSleepNanos - minSleepNanos));
+
+                LockSupport.parkNanos(sleep);
+            }
+        });
+        refiller.setDaemon(true);
+        refiller.start();
+    }
+
+    @State(Scope.Thread)
+    @AuxCounters(AuxCounters.Type.OPERATIONS)
+    public static class OpCounters {
+        public long emptyPolls;
+        public long totalPolls;
+
+        @Setup(Level.Iteration)
+        public void reset() {
+            emptyPolls = 0;
+            totalPolls = 0;
+        }
+
+        // JMH reports this as a rate (ops/time unit) alongside throughput
+        public double emptyRate() {
+            return totalPolls == 0 ? 0 : (double) emptyPolls / totalPolls;
+        }
+    }
 
     @Threads(8)
     @Benchmark
-    public void eightThreads(Blackhole bh, ThreadState ts) {
-        doWork(bh, ts);
+    public void eightThreads(Blackhole bh, ThreadState ts, OpCounters counters) {
+        if (ts.nextInt() < 80) {
+            Integer result = queue.poll();
+            counters.totalPolls++;
+            if (result == null) counters.emptyPolls++;
+            bh.consume(result);
+        } else {
+            queue.add(ThreadLocalRandom.current().nextInt(1_000_000));
+        }
     }
 
-
-    private void doWork(Blackhole bh, ThreadState ts) {
-        int next = ts.nextInt();
-         if (next >= 0 && next <= 79) bh.consume(queue.poll());
-        else bh.consume(queue.add(ThreadLocalRandom.current().nextInt(1_000_000)));
-
+    @TearDown
+    public void teardown() throws InterruptedException {
+        running = false;
+        refiller.join();
+        queue.clear();
     }
 
     static class BenchRunner {
         static void main() throws RunnerException {
             Options options = new OptionsBuilder()
                     .include(HeavyPollBench.class.getSimpleName())
-                   // .addProfiler(JavaFlightRecorderProfiler.class, "dir=C:\\jfr-hp")
+                    // .addProfiler(JavaFlightRecorderProfiler.class, "dir=C:\\jfr-hp")
                     .build();
             new org.openjdk.jmh.runner.Runner(options).run();
         }

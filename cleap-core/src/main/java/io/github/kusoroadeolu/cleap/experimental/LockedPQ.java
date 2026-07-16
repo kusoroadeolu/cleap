@@ -1,4 +1,4 @@
-package io.github.kusoroadeolu.cleap.dualarray;
+package io.github.kusoroadeolu.cleap.experimental;
 
 import io.github.kusoroadeolu.cleap.PriorityQueue;
 
@@ -22,7 +22,7 @@ public class LockedPQ<T> implements PriorityQueue<T> {
         try {
             int size = q.size();
             if (size == capacity) return false;
-            else return q.add(t);
+            return queue.add(t);
         }finally {
             l.unlock();
         }
@@ -34,7 +34,8 @@ public class LockedPQ<T> implements PriorityQueue<T> {
         var q = queue;
         l.lock();
         try {
-            return q.poll();
+            T t = q.poll();
+            return t;
         }finally {
             l.unlock();
         }
@@ -42,7 +43,12 @@ public class LockedPQ<T> implements PriorityQueue<T> {
 
     @Override
     public int size() {
-        return 0;
+        lock.lock();
+        try {
+            return queue.size();
+        }finally {
+            lock.unlock();
+        }
     }
 
     @Override

@@ -369,7 +369,7 @@ public class PaddedArenaEpochPQ<E> extends SharedConsumerFieldsRPad<E> implement
 
     @Override
     public int size() {
-        return 0;
+        return (int) (lvProducerIndex() - lvConsumerIndex());
     }
 
     E doPoll() {
@@ -492,3 +492,10 @@ public class PaddedArenaEpochPQ<E> extends SharedConsumerFieldsRPad<E> implement
         byte b160,b161,b162,b163,b164,b165,b166,b167;//120b
     }
 }
+
+/* STATE MACHINE FOR ARENA
+* null → WAITER   (a thread registered as waiting)
+WAITER → AWAIT  (the combiner has claimed you)
+AWAIT → result  (the combiner has written your value, or NONE if queue empty)
+result → null   (thread has read it and cleared the slot)
+* */

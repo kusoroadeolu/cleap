@@ -96,20 +96,20 @@ public class EpochPQ<E> extends EpochSharedConsumerFieldsRPad<E> implements Prio
 
         var buffer = this.buffer;
         var mask = this.mask;
+        long capacity = mask + 1;
 
         long pLimit = lvProducerLimit();
         long pIndex;
         long cIndex;
 
         for (;;) {
-            pIndex = lvProducerIndex(); //could use an acquire read here
+            pIndex = lvProducerIndex();
             if (pIndex >= pLimit) {
                 cIndex = lvConsumerIndex();
-                pLimit = cIndex + mask + 1; //Available slots in the buffer rn
+                pLimit = cIndex + capacity; //Available slots in the buffer rn
 
-                if (pIndex >= pLimit) {
-                    return false; //no slots available
-                }
+                if (pIndex >= pLimit) return false; //no slots available
+                //greater than check here is to take care of the race where a stalled / late arriving thread stores an old plimit
                 else soProducerLimit(pLimit);
             }
 
@@ -181,7 +181,7 @@ public class EpochPQ<E> extends EpochSharedConsumerFieldsRPad<E> implements Prio
 
     @Override
     public int size() {
-        return 0;
+        return (int) (lvProducerIndex() - lvConsumerIndex());
     }
 
     E doPoll() {

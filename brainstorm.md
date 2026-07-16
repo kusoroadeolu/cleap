@@ -11,11 +11,10 @@ No batch methods and it doesn't have to implement the `Collection` interface
 Given a pq of an initial size k, the pq should not hold at any given time, any number of elements > k. When size == k, we reject new inserts
 
 ## What I want to optimize for
-Low latency delete min operations under high write contention. However inserts should have decent or low latency/thrpt. I am also optimizing for a low memory footprint
+Low latency delete min operations under high write contention. However inserts should have decent or low latency/thrpt. 
 
 ## Consistency model
-I'm aiming for linearizability. This can be weakened if needed. Communication among threads will be mainly done using causal consistency modes, though sequential consistency modes
-might be needed in some places
+I'm aiming for linearizability.
 
 ## The issue with pq's
 The main bottleneck of pqs is the serial nature of delete min operations as most threads will contend at the head of the queue. We alleviate
@@ -180,7 +179,7 @@ The main issues so far is the fact that fixed capacity tightly couples the delet
 as they both depend on each other to maintain the bounded invariant. Also, through profiling, a lot of the hotpaths have been the memory accesses, which is never a good sign
 as no amount of memory ordering optimization will increase performance to an actual meaningful level. This hints at the algorithm being suboptimal for the problem.
 
-As at now, the best performing structures for my intended workload, 80% poll 20% insert (measured by latency) by a mile is a simple locked PQ followed by the ordered bounded PQ. The Combining and LB PQ are 
+As at now, the best performing structures for my intended workload, 40% poll 60% insert (measured by latency) by a mile is a simple locked PQ followed by the ordered bounded PQ. The Combining and LB PQ are 
 pretty suboptimal. However for insert heavy workloads 100% inserts, all these designs are pretty neck in neck as inserts are pretty cheap in most of them
 
 

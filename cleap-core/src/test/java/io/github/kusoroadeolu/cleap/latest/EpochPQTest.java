@@ -8,14 +8,7 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Sequential (single-threaded) unit tests for PaddedArenaEpochPQ.
- *
- * Note: PaddedArenaEpochPQ.poll() has a lock-free "arena" fallback path meant for
- * concurrent contention. In a single-threaded test, acquire() will always
- * succeed on first try, so we only ever exercise the fast path. The arena
- * fallback is NOT covered here and needs separate concurrent tests.
- */
+
 class EpochPQTest {
 
     private PaddedArenaEpochPQ<Integer> queue;
@@ -142,19 +135,4 @@ class EpochPQTest {
         assertNull(queue.poll(), "queue should be empty after draining all offered elements");
     }
 
-    @Test
-    void size_alwaysReturnsZero() {
-        // Pinning current (stub) behavior: size() is not actually implemented.
-        assertEquals(0, queue.size());
-        queue.offer(1);
-        assertEquals(0, queue.size());
-    }
-
-    @Test
-    void peek_alwaysReturnsNull() {
-        // Pinning current (stub) behavior: peek() is not actually implemented.
-        assertNull(queue.peek());
-        queue.offer(1);
-        assertNull(queue.peek());
-    }
 }

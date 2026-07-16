@@ -332,7 +332,7 @@ public class MpmcEpochPQ<E> extends StatusFieldRPad<E> implements PriorityQueue<
 
     @Override
     public int size() {
-        return 0;
+        return (int) (lvProducerIndex() - lvConsumerIndex());
     }
 
     long merge(long cIndex, long pIndex, long mask ,Object[] buffer, long[] sequence) {
