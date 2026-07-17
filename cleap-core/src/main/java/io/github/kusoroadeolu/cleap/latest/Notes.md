@@ -25,7 +25,7 @@ A more practical example:
     Given an array of unsigned integers capacity 8 with a logical segment size of 4 
     [4 7 2 1 -1 -1 -1 -1]
     On queue creation, Epoch 0, consists of the values 4 to 1
-    If a later insert of a element `0` such that the queue becomes [4 7 2 1 0 -1 -1 -1], `0` will be
+    If a later insert of an element `0` such that the queue becomes [4 7 2 1 0 -1 -1 -1], `0` will be
     regarded as if it was part of the epoch
     
 When a delete min operation occurs, a segment sort operation will begin and determine the actual range of the epoch;  

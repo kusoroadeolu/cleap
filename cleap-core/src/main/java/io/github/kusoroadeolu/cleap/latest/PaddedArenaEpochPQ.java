@@ -162,12 +162,19 @@ class ConsumerIndexLPad<E> extends ConsumerIndexField<E> {
 
 class SegmentLimitField<E> extends ConsumerIndexLPad<E> {
     final long segmentLimit;
+    final Object[] sortBuffer;
     long segmentEndIndex;
 
     public SegmentLimitField(int capacity) {
         super(capacity);
         segmentLimit = Utils.segmentLimit(this.mask + 1);
+        sortBuffer =  new Object[(int) segmentLimit];
+    }
 
+    public SegmentLimitField(int capacity, long segmentLimit) {
+        super(capacity);
+        this.segmentLimit = segmentLimit;
+        sortBuffer = new Object[(int) segmentLimit];
     }
 
     public void spSegmentEndIndex(long sIndex) {
@@ -204,6 +211,10 @@ class SegmentLimitRPad<E> extends SegmentLimitField<E> {
     public SegmentLimitRPad(int capacity) {
         super(capacity);
     }
+
+    public SegmentLimitRPad(int capacity, long segmentLimit) {
+        super(capacity, segmentLimit);
+    }
 }
 
 class SharedConsumerFields<E> extends SegmentLimitRPad<E> {
@@ -230,6 +241,17 @@ class SharedConsumerFields<E> extends SegmentLimitRPad<E> {
             arena[i] = new ArenaObject();
         }
     }
+
+    public SharedConsumerFields(int capacity, long segmentLimit) {
+        super(capacity, segmentLimit);
+        int size = arenaSize();
+        arena = new ArenaObject[size];
+        for (int i = 0; i < size; ++i) {
+            arena[i] = new ArenaObject();
+        }
+    }
+
+
 
     public boolean acquire() {
         return isFree() && (int) STATE.getAndAdd(this, 1) == 0;
@@ -269,6 +291,10 @@ class SharedConsumerFieldsRPad<E> extends SharedConsumerFields<E> {
     public SharedConsumerFieldsRPad(int capacity) {
         super(capacity);
     }
+
+    public SharedConsumerFieldsRPad(int capacity, long segmentLimit) {
+        super(capacity, segmentLimit);
+    }
 }
 
 
@@ -276,6 +302,11 @@ public class PaddedArenaEpochPQ<E> extends SharedConsumerFieldsRPad<E> implement
 
     public PaddedArenaEpochPQ(int capacity) {
         super(capacity);
+    }
+
+
+    public PaddedArenaEpochPQ(int capacity, long segmentLimit) {
+        super(capacity, segmentLimit);
     }
 
     public boolean offer(final E e) {
@@ -338,7 +369,7 @@ public class PaddedArenaEpochPQ<E> extends SharedConsumerFieldsRPad<E> implement
 
             int start = ThreadLocalRandom.current().nextInt();
             int arenaSize = arenaSize();
-            inner: for (int step = 0, totalSpins = 0; (step < arenaSize) && (totalSpins < MAX_SPINS) && isFree(); step++) {
+            inner: for (int step = 0, totalSpins = 0; (step < arenaSize) && (totalSpins < MAX_SPINS); step++) {
                 int index = (step + start) & MASK;
                 var arenaObject = arena[index];
                 var seen = arenaObject.loValue();
@@ -409,7 +440,8 @@ public class PaddedArenaEpochPQ<E> extends SharedConsumerFieldsRPad<E> implement
         int diff = (int) (mmg - cIndex);
         if (diff == 1) return -1;
 
-        E[] array = (E[]) new Object[diff];
+        Object[] array = this.sortBuffer;
+
         long j = cIndex;
         for (int i = 0; i < diff; ++i) {
             int offset = offset(j++, mask);
@@ -423,12 +455,13 @@ public class PaddedArenaEpochPQ<E> extends SharedConsumerFieldsRPad<E> implement
             array[i] = elem;
         }
 
-        Arrays.sort(array);
+        Arrays.sort(array, 0, diff);
 
         j = cIndex;
         for (int i = 0; i < diff; ++i) {
             int offset = offset(j++, mask);
             spElem(buffer, offset, array[i]);
+            array[i] = null;
         }
 
         return mmg;

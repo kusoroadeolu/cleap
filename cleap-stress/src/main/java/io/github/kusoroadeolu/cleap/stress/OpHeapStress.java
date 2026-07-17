@@ -36,7 +36,7 @@ public class OpHeapStress {
         @Arbiter
         public void arbiter(I_Result res) {
             priorityQueue.add(0);
-            if (priorityQueue.peek() != 3) res.r1 = 1;
+            if (priorityQueue.poll() != 3) res.r1 = 1;
             else res.r1 = 0;
         }
 

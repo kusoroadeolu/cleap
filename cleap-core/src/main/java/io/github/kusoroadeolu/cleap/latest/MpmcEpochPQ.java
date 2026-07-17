@@ -119,12 +119,12 @@ class MpmcConsumerIndexLPad<E> extends MpmcConsumerIndexField<E> {
 
 class MpmcSegmentLimitField<E> extends MpmcConsumerIndexLPad<E> {
     final long segmentLimit;
-
+    final Object[] sortBuffer;
 
     public MpmcSegmentLimitField(int capacity) {
         super(capacity);
         segmentLimit = Utils.segmentLimit(this.mask + 1);
-
+        sortBuffer =  new Object[(int) segmentLimit];
     }
 
 
@@ -341,29 +341,29 @@ public class MpmcEpochPQ<E> extends StatusFieldRPad<E> implements PriorityQueue<
 
         if (diff == 1) return mmg;
 
-        E[] array = (E[]) new Object[diff];
+        Object[] array = this.sortBuffer;
+
         long j = cIndex;
         for (int i = 0; i < diff; ++i) {
             long expected = j + 1;
-            int offset = offset(j, mask);
-            long seq = lvSequence(sequence, offset);
-            if (seq != expected) {
+            int offset = offset(j++, mask);
+            if (lvSequence(sequence, offset) != expected) {
                 while (lvSequence(sequence, offset) != expected) {
                     Thread.onSpinWait();
                 }
             }
-
             array[i] = lpElem(buffer, offset);
-            j++;
         }
 
-        Arrays.sort(array);
+        Arrays.sort(array, 0, diff);
 
         j = cIndex;
         for (int i = 0; i < diff; ++i) {
             int offset = offset(j++, mask);
             spElem(buffer, offset, array[i]);
+            array[i] = null;
         }
+
         return mmg;
     }
 }

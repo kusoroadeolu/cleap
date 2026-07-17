@@ -6,7 +6,7 @@ import java.lang.invoke.VarHandle;
 public final class Utils {
     public static final int MAX_POW2 = 1 << 30;
     public static final double SEGMENT_RATIO = 0.25;
-    public static final long MAX_SEGMENT_CAP = 1000;
+    public static final long MAX_SEGMENT_CAP = 1024;
     public static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
     public static final int NCPU = Runtime.getRuntime().availableProcessors();
 

@@ -214,13 +214,14 @@ public class EpochPQ<E> extends EpochSharedConsumerFieldsRPad<E> implements Prio
         return elem;
     }
 
-     long segmentSort(long cIndex, long pIndex, long mask , Object[] buffer) {
+    long segmentSort(long cIndex, long pIndex, long mask , Object[] buffer) {
         long mmg = Math.min(pIndex, cIndex + segmentLimit);
 
         int diff = (int) (mmg - cIndex);
         if (diff == 1) return -1;
 
-        E[] array = (E[]) new Object[diff];
+        Object[] array = this.sortBuffer;
+
         long j = cIndex;
         for (int i = 0; i < diff; ++i) {
             int offset = offset(j++, mask);
@@ -234,12 +235,13 @@ public class EpochPQ<E> extends EpochSharedConsumerFieldsRPad<E> implements Prio
             array[i] = elem;
         }
 
-        Arrays.sort(array);
+        Arrays.sort(array, 0, diff);
 
         j = cIndex;
         for (int i = 0; i < diff; ++i) {
             int offset = offset(j++, mask);
             spElem(buffer, offset, array[i]);
+            array[i] = null;
         }
 
         return mmg;
