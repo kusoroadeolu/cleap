@@ -117,24 +117,24 @@ class MpmcConsumerIndexLPad<E> extends MpmcConsumerIndexField<E> {
     }
 }
 
-class MpmcMergeLimitField<E> extends MpmcConsumerIndexLPad<E> {
-    final long maxMergeLimit;
+class MpmcSegmentLimitField<E> extends MpmcConsumerIndexLPad<E> {
+    final long segmentLimit;
 
 
-    public MpmcMergeLimitField(int capacity) {
+    public MpmcSegmentLimitField(int capacity) {
         super(capacity);
-        maxMergeLimit = Utils.mergeLimit(this.mask + 1);
+        segmentLimit = Utils.segmentLimit(this.mask + 1);
 
     }
 
 
 
     public long lpMaxMergeLimit() {
-        return maxMergeLimit;
+        return segmentLimit;
     }
 }
 
-class MpmcMergeLimitRPad<E> extends MpmcMergeLimitField<E> {
+class MpmcSegmentLimitRPad<E> extends MpmcSegmentLimitField<E> {
     byte b000,b001,b002,b003,b004,b005,b006,b007;//  8b
     byte b010,b011,b012,b013,b014,b015,b016,b017;// 16b
     byte b020,b021,b022,b023,b024,b025,b026,b027;// 24b
@@ -153,12 +153,12 @@ class MpmcMergeLimitRPad<E> extends MpmcMergeLimitField<E> {
     byte b170,b171,b172,b173,b174,b175,b176,b177;//128b
 
 
-    public MpmcMergeLimitRPad(int capacity) {
+    public MpmcSegmentLimitRPad(int capacity) {
         super(capacity);
     }
 }
 
-class MpmcStatusField<E> extends MpmcMergeLimitRPad<E> {
+class MpmcStatusField<E> extends MpmcSegmentLimitRPad<E> {
 
     volatile Status status = new Status(0);
     static final VarHandle STATUS = fieldOffset(MpmcStatusField.class, "status", Status.class);
@@ -172,18 +172,18 @@ class MpmcStatusField<E> extends MpmcMergeLimitRPad<E> {
         return status;
     }
 
-    void svStatus(Status status) {
+    void soStatus(Status status) {
         STATUS.setVolatile(this, status);
     }
 
 
     static class Status {
-        final long sortedIndex;
+        final long segmentEndIndex;
         volatile State state = State.NONE;
         static final VarHandle STATE = fieldOffset(Status.class, "state", State.class);
 
-        Status(long sortedIndex) {
-            this.sortedIndex = sortedIndex;
+        Status(long segmentEndIndex) {
+            this.segmentEndIndex = segmentEndIndex;
         }
 
         boolean casState(State seen, State to) {
@@ -205,7 +205,7 @@ class MpmcStatusField<E> extends MpmcMergeLimitRPad<E> {
         @Override
         public String toString() {
             return "Status{" +
-                    "sortedIndex=" + sortedIndex +
+                    "sortedIndex=" + segmentEndIndex +
                     ", state=" + state +
                     '}';
         }
@@ -261,7 +261,7 @@ public class MpmcEpochPQ<E> extends StatusFieldRPad<E> implements PriorityQueue<
             offset = Utils.offset(pIndex, mask);
             seq = lvSequence(sequence, offset);
 
-
+            //ideally seq == pIndex
             if (seq < pIndex) { //lagging consumer yet to update seq or no consumer
                 long available = pIndex - (mask + 1);
                 if (available >= cIndex && available >= (cIndex = lvConsumerIndex())) return false;
@@ -294,15 +294,15 @@ public class MpmcEpochPQ<E> extends StatusFieldRPad<E> implements PriorityQueue<
             offset = Utils.offset(cIndex , mask);
             seq = lvSequence(sequence, offset);
             expected = cIndex + 1; //seq at this offset should be exactly +1 of the offset value
-            sortedIndex = s.sortedIndex;
+            sortedIndex = s.segmentEndIndex;
 
             if (cIndex >= sortedIndex) { // '>' status is stale, == 'try merge' status
                 if (cIndex == (pIndex = lvProducerIndex())) return null;
 
                 if (s.lvState() == State.NONE && s.casState(State.NONE, State.MERGING)) {
-                    long sIndex = merge(cIndex, pIndex, mask, buffer, sequence);
+                    long sIndex = segmentSort(cIndex, pIndex, mask, buffer, sequence);
                     Status newS = new Status(sIndex);
-                    svStatus(newS);
+                    soStatus(newS);
                     s.soState(State.MERGED);
                     s = newS;
                     continue;
@@ -335,8 +335,8 @@ public class MpmcEpochPQ<E> extends StatusFieldRPad<E> implements PriorityQueue<
         return (int) (lvProducerIndex() - lvConsumerIndex());
     }
 
-    long merge(long cIndex, long pIndex, long mask ,Object[] buffer, long[] sequence) {
-        long mmg = Math.min(pIndex, cIndex + maxMergeLimit);
+    long segmentSort(long cIndex, long pIndex, long mask , Object[] buffer, long[] sequence) {
+        long mmg = Math.min(pIndex, cIndex + segmentLimit);
         int diff = (int) (mmg - cIndex);
 
         if (diff == 1) return mmg;

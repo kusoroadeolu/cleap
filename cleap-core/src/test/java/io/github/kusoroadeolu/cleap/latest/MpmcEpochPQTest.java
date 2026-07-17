@@ -97,7 +97,7 @@ class MpmcEpochPQTest {
     }
 
     @Test
-    void singleElementPollDoesNotTriggerMerge() {
+    void singleElementPollDoesNotTriggerSegmentSort() {
         // diff == 1 in merge() should take the -1 shortcut path without sorting
         var queue = new MpmcEpochPQ<Integer>(8);
         assertTrue(queue.add(7));

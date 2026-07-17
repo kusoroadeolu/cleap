@@ -11,7 +11,7 @@ import java.util.concurrent.atomic.AtomicReferenceArray;
 import static io.github.kusoroadeolu.cleap.latest.Utils.*;
 
 
-class EpochSharedConsumerFields<E> extends MergeLimitRPad<E> {
+class EpochSharedConsumerFields<E> extends SegmentLimitRPad<E> {
 
     int state;
     final AtomicReferenceArray<Object> arena;
@@ -23,7 +23,7 @@ class EpochSharedConsumerFields<E> extends MergeLimitRPad<E> {
     static final Object AWAIT = new Object();
     static final Object NONE = new Object();
     static final int SPINS_PER_SLOT = 200;
-    static final int MAX_SPINS = ARENA_SIZE * SPINS_PER_SLOT;
+    static final int MAX_SPINS = Math.min(2500, ARENA_SIZE * SPINS_PER_SLOT);
     static final int BACKOFF_SPINS = 40;
 
 
@@ -150,7 +150,7 @@ public class EpochPQ<E> extends EpochSharedConsumerFieldsRPad<E> implements Prio
 
             int start = ThreadLocalRandom.current().nextInt();
             int arenaSize = arenaSize();
-            inner: for (int step = 0, totalSpins = 0; (step < arenaSize) && (totalSpins < MAX_SPINS); step++) {
+            inner: for (int step = 0, totalSpins = 0; (step < arenaSize) && (totalSpins < MAX_SPINS) && isFree(); step++) {
                 int index = (step + start) & MASK;
                 var seen = loArenaElem(arena, index);
                 if (seen == null && casArenaElem(arena, index, null, WAITER)) {
@@ -186,25 +186,25 @@ public class EpochPQ<E> extends EpochSharedConsumerFieldsRPad<E> implements Prio
 
     E doPoll() {
         long cIndex = lpConsumerIndex();
-        long sIndex = lpSortedIndex();
+        long sIndex = lpSegmentEndIndex();
         long mask = this.mask;
         var buffer = this.buffer;
         E elem;
         if (cIndex == sIndex) { //If we've reached the end of the sorted index
             long pIndex = lvProducerIndex();
             if (pIndex == cIndex) return null;
-            long newIndex = merge(cIndex, pIndex, mask, buffer);
+            long newIndex = segmentSort(cIndex, pIndex, mask, buffer);
 
             if (newIndex == -1) {
                 var offset = offset(cIndex, mask);
                 while ((elem = lvElem(buffer, offset)) == null) Thread.onSpinWait();
 
-                spSortedIndex(sIndex + 1);
+                spSegmentEndIndex(sIndex + 1);
                 soConsumerIndex(cIndex + 1);
                 return elem;
             }
 
-            spSortedIndex(newIndex);
+            spSegmentEndIndex(newIndex);
         }
 
         var offset = offset(cIndex, mask);
@@ -214,8 +214,8 @@ public class EpochPQ<E> extends EpochSharedConsumerFieldsRPad<E> implements Prio
         return elem;
     }
 
-    long merge(long cIndex, long pIndex, long mask ,Object[] buffer) {
-        long mmg = Math.min(pIndex, cIndex + maxMergeLimit);
+     long segmentSort(long cIndex, long pIndex, long mask , Object[] buffer) {
+        long mmg = Math.min(pIndex, cIndex + segmentLimit);
 
         int diff = (int) (mmg - cIndex);
         if (diff == 1) return -1;

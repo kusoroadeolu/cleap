@@ -85,7 +85,7 @@ class EpochPQTest {
     }
 
     @Test
-    void poll_moreThanMergeLimit_stillReturnsAllSortedAcrossChunks() {
+    void poll_moreThanSegmentSortLimit_stillReturnsAllSortedAcrossChunks() {
         // Use a larger queue so we can push past capacity/merge-limit boundaries
         // and verify chunked merging still produces a fully sorted drain.
         PaddedArenaEpochPQ<Integer> q = new PaddedArenaEpochPQ<>(64);

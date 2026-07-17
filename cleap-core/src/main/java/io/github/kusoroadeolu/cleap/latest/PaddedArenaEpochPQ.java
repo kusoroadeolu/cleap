@@ -160,30 +160,30 @@ class ConsumerIndexLPad<E> extends ConsumerIndexField<E> {
     }
 }
 
-class MergeLimitField<E> extends ConsumerIndexLPad<E> {
-    final long maxMergeLimit;
-    long sortedIndex;
+class SegmentLimitField<E> extends ConsumerIndexLPad<E> {
+    final long segmentLimit;
+    long segmentEndIndex;
 
-    public MergeLimitField(int capacity) {
+    public SegmentLimitField(int capacity) {
         super(capacity);
-        maxMergeLimit = Utils.mergeLimit(this.mask + 1);
+        segmentLimit = Utils.segmentLimit(this.mask + 1);
 
     }
 
-    public void spSortedIndex(long sIndex) {
-        sortedIndex = sIndex;
+    public void spSegmentEndIndex(long sIndex) {
+        segmentEndIndex = sIndex;
     }
 
     public long lpMaxMergeLimit() {
-        return maxMergeLimit;
+        return segmentLimit;
     }
 
-    public long lpSortedIndex() {
-        return sortedIndex;
+    public long lpSegmentEndIndex() {
+        return segmentEndIndex;
     }
 }
 
-class MergeLimitRPad<E> extends MergeLimitField<E> {
+class SegmentLimitRPad<E> extends SegmentLimitField<E> {
     byte b000,b001,b002,b003,b004,b005,b006,b007;//  8b
     byte b010,b011,b012,b013,b014,b015,b016,b017;// 16b
     byte b020,b021,b022,b023,b024,b025,b026,b027;// 24b
@@ -201,12 +201,12 @@ class MergeLimitRPad<E> extends MergeLimitField<E> {
     byte b160,b161,b162,b163,b164,b165,b166,b167;//120b
 
 
-    public MergeLimitRPad(int capacity) {
+    public SegmentLimitRPad(int capacity) {
         super(capacity);
     }
 }
 
-class SharedConsumerFields<E> extends MergeLimitRPad<E> {
+class SharedConsumerFields<E> extends SegmentLimitRPad<E> {
 
     int state;
     final ArenaObject[] arena;
@@ -218,7 +218,7 @@ class SharedConsumerFields<E> extends MergeLimitRPad<E> {
     static final Object AWAIT = new Object();
     static final Object NONE = new Object();
     static final int SPINS_PER_SLOT = 200;
-    static final int MAX_SPINS = ARENA_SIZE * SPINS_PER_SLOT;
+    static final int MAX_SPINS = Math.min(2500, ARENA_SIZE * SPINS_PER_SLOT);
     static final int BACKOFF_SPINS = 40;
 
 
@@ -283,6 +283,7 @@ public class PaddedArenaEpochPQ<E> extends SharedConsumerFieldsRPad<E> implement
 
         var buffer = this.buffer;
         var mask = this.mask;
+        long capacity = mask + 1;
 
         long pLimit = lvProducerLimit();
         long pIndex;
@@ -292,7 +293,7 @@ public class PaddedArenaEpochPQ<E> extends SharedConsumerFieldsRPad<E> implement
             pIndex = lvProducerIndex(); //could use an acquire read here
             if (pIndex >= pLimit) {
                 cIndex = lvConsumerIndex();
-                pLimit = cIndex + mask + 1; //Available slots in the buffer rn
+                pLimit = cIndex + capacity; //Available slots in the buffer rn
 
                 if (pIndex >= pLimit) {
                     return false; //no slots available
@@ -337,7 +338,7 @@ public class PaddedArenaEpochPQ<E> extends SharedConsumerFieldsRPad<E> implement
 
             int start = ThreadLocalRandom.current().nextInt();
             int arenaSize = arenaSize();
-            inner: for (int step = 0, totalSpins = 0; (step < arenaSize) && (totalSpins < MAX_SPINS); step++) {
+            inner: for (int step = 0, totalSpins = 0; (step < arenaSize) && (totalSpins < MAX_SPINS) && isFree(); step++) {
                 int index = (step + start) & MASK;
                 var arenaObject = arena[index];
                 var seen = arenaObject.loValue();
@@ -374,25 +375,25 @@ public class PaddedArenaEpochPQ<E> extends SharedConsumerFieldsRPad<E> implement
 
     E doPoll() {
         long cIndex = lpConsumerIndex();
-        long sIndex = lpSortedIndex();
+        long sIndex = lpSegmentEndIndex();
         long mask = this.mask;
         var buffer = this.buffer;
         E elem;
         if (cIndex == sIndex) { //If we've reached the end of the sorted index
             long pIndex = lvProducerIndex();
             if (pIndex == cIndex) return null;
-            long newIndex = merge(cIndex, pIndex, mask, buffer);
+            long newIndex = segmentSort(cIndex, pIndex, mask, buffer);
 
             if (newIndex == -1) {
                 var offset = offset(cIndex, mask);
                 while ((elem = lvElem(buffer, offset)) == null) Thread.onSpinWait();
 
-                spSortedIndex(sIndex + 1);
+                spSegmentEndIndex(sIndex + 1);
                 soConsumerIndex(cIndex + 1);
                 return elem;
             }
 
-            spSortedIndex(newIndex);
+            spSegmentEndIndex(newIndex);
         }
 
         var offset = offset(cIndex, mask);
@@ -402,8 +403,8 @@ public class PaddedArenaEpochPQ<E> extends SharedConsumerFieldsRPad<E> implement
         return elem;
     }
 
-    long merge(long cIndex, long pIndex, long mask ,Object[] buffer) {
-        long mmg = Math.min(pIndex, cIndex + maxMergeLimit);
+    long segmentSort(long cIndex, long pIndex, long mask , Object[] buffer) {
+        long mmg = Math.min(pIndex, cIndex + segmentLimit);
 
         int diff = (int) (mmg - cIndex);
         if (diff == 1) return -1;
@@ -494,8 +495,9 @@ public class PaddedArenaEpochPQ<E> extends SharedConsumerFieldsRPad<E> implement
 }
 
 /* STATE MACHINE FOR ARENA
-* null → WAITER   (a thread registered as waiting)
-WAITER → AWAIT  (the combiner has claimed you)
-AWAIT → result  (the combiner has written your value, or NONE if queue empty)
-result → null   (thread has read it and cleared the slot)
+null -> WAITER   (a thread registered as waiting)
+WAITER -> AWAIT  (the combiner has claimed you)
+AWAIT -> result  (the combiner has written your value, or NONE if queue empty)
+result -> null   (thread has read it and cleared the slot)
+
 * */
