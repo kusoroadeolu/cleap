@@ -150,7 +150,7 @@ public class EpochPQ<E> extends EpochSharedConsumerFieldsRPad<E> implements Prio
 
             int start = ThreadLocalRandom.current().nextInt();
             int arenaSize = arenaSize();
-            inner: for (int step = 0, totalSpins = 0; (step < arenaSize) && (totalSpins < MAX_SPINS) && isFree(); step++) {
+            inner: for (int step = 0, totalSpins = 0; (step < arenaSize) && (totalSpins < MAX_SPINS) /*&& isFree()*/; step++) {
                 int index = (step + start) & MASK;
                 var seen = loArenaElem(arena, index);
                 if (seen == null && casArenaElem(arena, index, null, WAITER)) {

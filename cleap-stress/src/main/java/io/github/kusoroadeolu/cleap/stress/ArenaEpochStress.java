@@ -1,6 +1,6 @@
 package io.github.kusoroadeolu.cleap.stress;
 
-import io.github.kusoroadeolu.cleap.latest.MpmcEpochPQ;
+import io.github.kusoroadeolu.cleap.latest.PaddedArenaEpochPQ;
 import org.openjdk.jcstress.annotations.*;
 import org.openjdk.jcstress.infra.results.II_Result;
 import org.openjdk.jcstress.infra.results.I_Result;
@@ -13,20 +13,20 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ThreadLocalRandom;
 
-public class MpmcEpochPQStress {
+public class ArenaEpochStress {
     @JCStressTest
     @Outcome(id = "1", expect = Expect.ACCEPTABLE, desc = "Invariant maintained")
     @Outcome(id = "0", expect = Expect.FORBIDDEN, desc = "Invariant violated")
     @State
     //Assert no writes are lost
     public static class NoLostWrites {
-        private MpmcEpochPQ<Integer> pq;
+        private PaddedArenaEpochPQ<Integer> pq;
         private Set<Integer> seen;
         private Queue<Integer> queue;
 
 
         public NoLostWrites() {
-            this.pq = new MpmcEpochPQ<>(8);
+            this.pq = new PaddedArenaEpochPQ<>(8);
             seen = ConcurrentHashMap.newKeySet();
             queue = new ConcurrentLinkedQueue<>();
         }
@@ -89,10 +89,10 @@ public class MpmcEpochPQStress {
     @State
     //At least one thread triggers a merge immediately, the other has to wait (so both should see concrete values)
     public static class SegmentSortInvariant {
-        private MpmcEpochPQ<Integer> pq;
+        private PaddedArenaEpochPQ<Integer> pq;
 
         public SegmentSortInvariant() {
-            this.pq = new MpmcEpochPQ<>(8);
+            this.pq = new PaddedArenaEpochPQ<>(8);
             pq.add(2); pq.add(1);
         }
 
@@ -116,10 +116,10 @@ public class MpmcEpochPQStress {
     @State
     //At least one thread triggers a merge immediately, the other has to wait (so both should see concrete values)
     public static class EpochPriorityInvariant {
-        private MpmcEpochPQ<Integer> pq;
+        private PaddedArenaEpochPQ<Integer> pq;
 
         public EpochPriorityInvariant() {
-            this.pq = new MpmcEpochPQ<>(8); //should see 3 before 1 (2 - 3 - 1)
+            this.pq = new PaddedArenaEpochPQ<>(8); //should see 3 before 1 (2 - 3 - 1)
             pq.add(3); pq.add(2); pq.add(1); //epoch len is 2, only 3 and 2 will be sorted in pq order
         }
 
@@ -142,10 +142,10 @@ public class MpmcEpochPQStress {
     @Outcome(id = "1", expect = Expect.ACCEPTABLE, desc = "Invariant maintained")
     @State
     public static class AddRemoveLinearizability {
-        private MpmcEpochPQ<Integer> pq;
+        private PaddedArenaEpochPQ<Integer> pq;
 
         public AddRemoveLinearizability() {
-            this.pq = new MpmcEpochPQ<>(4); //should see 3 before 1 (2 - 3 - 1)
+            this.pq = new PaddedArenaEpochPQ<>(4); //should see 3 before 1 (2 - 3 - 1)
         }
 
         @Actor
@@ -164,10 +164,10 @@ public class MpmcEpochPQStress {
             List<Integer> ls = pq.drain();
             boolean contains = ls.contains(1);
             /*
-            * Valid executions
-            * add -> remove 1 - 1
-            * remove -> add 0 - 1
-            * */
+             * Valid executions
+             * add -> remove 1 - 1
+             * remove -> add 0 - 1
+             * */
 
             if (r.r1 == 1 && contains) r.r1 = 0;
             else r.r1 = 1;

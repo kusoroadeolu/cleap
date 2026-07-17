@@ -49,9 +49,10 @@ It also uses a status flag per node to indicate if the node obeys the mound inva
 the issue of mutable anchors in a bounded array, so there's that
 
 ## Off the table
-1. Striped locking - the latency of just acquiring the lock defeats the latency it will take to compare two values (and possibly swap them if needed). Also it incurs a high memory footprint and is highly prone to deadlocks
+1. Striped / Fine Grained locking - the latency of just acquiring the lock defeats the latency it will take to compare two values (and possibly swap them if needed). Also it incurs a high memory footprint and is highly prone to deadlocks
 2. A simple fixed array using a lock (PriorityBlockingQueue) already does it (though its unbounded)
 3. Skip list based approaches
+
 
 ## Some of my current design ideas
 ### Segmented + Elimination
