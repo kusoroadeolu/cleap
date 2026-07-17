@@ -60,9 +60,9 @@ until a sort segment operation is needed.
 
 Sort segment operations are coordinated through a monotonic three state status, refreshed after 
 - `NONE` - Indices can be claimed for polls in the sorted segment 
-- `MERGING` - A thread is currently sorting the segment range of the current epoch. This is a stop the world operation for only delete operations. 
+- `SORTING` - A thread is currently sorting the segment range of the current epoch. This is a stop the world operation for only delete operations. 
 - The poll latency & thrpt of deletes is dependent on how fast a thread can perform this operation. Waiting threads spin wait on the status flag until a merged operation is published
-- `MERGED` - A new epoch has started and the previous elements in the range of the last epoch have been sorted and can be claimed. 
+- `SORTED` - A new epoch has started and the previous elements in the range of the last epoch have been sorted and can be claimed. 
 The release of a new status flag `happens before` the merged write to the previous status's state
 
 

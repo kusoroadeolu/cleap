@@ -211,7 +211,7 @@ class MpmcStatusField<E> extends MpmcSegmentLimitRPad<E> {
         }
     }
 
-    enum State {NONE, MERGING, MERGED}
+    enum State {NONE, SORTING, SORTED}
 }
 
 class StatusFieldRPad<E> extends MpmcStatusField<E> {
@@ -299,14 +299,14 @@ public class MpmcEpochPQ<E> extends StatusFieldRPad<E> implements PriorityQueue<
             if (cIndex >= sortedIndex) { // '>' status is stale, == 'try merge' status
                 if (cIndex == (pIndex = lvProducerIndex())) return null;
 
-                if (s.lvState() == State.NONE && s.casState(State.NONE, State.MERGING)) {
+                if (s.lvState() == State.NONE && s.casState(State.NONE, State.SORTING)) {
                     long sIndex = segmentSort(cIndex, pIndex, mask, buffer, sequence);
                     Status newS = new Status(sIndex);
                     soStatus(newS);
-                    s.soState(State.MERGED);
+                    s.soState(State.SORTED);
                     s = newS;
                     continue;
-                } else while (s.loState() != State.MERGED){
+                } else while (s.loState() != State.SORTED){
                     Thread.onSpinWait();
                 }
 

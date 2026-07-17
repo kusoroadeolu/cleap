@@ -149,4 +149,35 @@ SegmentLimitBench.ratio_6_2:p0.999                           4096  PADDED_EPO  s
 SegmentLimitBench.ratio_6_2:p0.9999                          4096  PADDED_EPO  sample            1124.352          us/op
 SegmentLimitBench.ratio_6_2:p1.00                            4096  PADDED_EPO  sample           10108.928          us/op
 * */
+
+/* 1024
+* DeleteMinLatencyBench.ratio_6_2                        PADDED_EPO  sample  5168325      0.349 ± 0.017  us/op
+DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2          PADDED_EPO  sample  1146238      1.340 ± 0.064  us/op
+DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.00    PADDED_EPO  sample                 ≈ 0          us/op
+DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.50    PADDED_EPO  sample               0.100          us/op
+DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.90    PADDED_EPO  sample               0.200          us/op
+DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.95    PADDED_EPO  sample               0.200          us/op
+DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.99    PADDED_EPO  sample               2.100          us/op
+DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.999   PADDED_EPO  sample             246.784          us/op
+DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.9999  PADDED_EPO  sample             324.674          us/op
+DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p1.00    PADDED_EPO  sample            6258.688          us/op
+DeleteMinLatencyBench.ratio_6_2:insert_6_2             PADDED_EPO  sample  4022087      0.066 ± 0.012  us/op
+DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.00       PADDED_EPO  sample                 ≈ 0          us/op
+DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.50       PADDED_EPO  sample                 ≈ 0          us/op
+DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.90       PADDED_EPO  sample               0.100          us/op
+DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.95       PADDED_EPO  sample               0.100          us/op
+DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.99       PADDED_EPO  sample               0.400          us/op
+DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.999      PADDED_EPO  sample               3.800          us/op
+DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.9999     PADDED_EPO  sample              14.192          us/op
+DeleteMinLatencyBench.ratio_6_2:insert_6_2:p1.00       PADDED_EPO  sample           13139.968          us/op
+DeleteMinLatencyBench.ratio_6_2:p0.00                  PADDED_EPO  sample                 ≈ 0          us/op
+DeleteMinLatencyBench.ratio_6_2:p0.50                  PADDED_EPO  sample                 ≈ 0          us/op
+DeleteMinLatencyBench.ratio_6_2:p0.90                  PADDED_EPO  sample               0.100          us/op
+DeleteMinLatencyBench.ratio_6_2:p0.95                  PADDED_EPO  sample               0.100          us/op
+DeleteMinLatencyBench.ratio_6_2:p0.99                  PADDED_EPO  sample               1.400          us/op
+DeleteMinLatencyBench.ratio_6_2:p0.999                 PADDED_EPO  sample             174.848          us/op
+DeleteMinLatencyBench.ratio_6_2:p0.9999                PADDED_EPO  sample             255.531          us/op
+DeleteMinLatencyBench.ratio_6_2:p1.00                  PADDED_EPO  sample           13139.968          us/op
+* */
+
 }
