@@ -1,7 +1,7 @@
 package io.github.kusoroadeolu.cleap.latest;
 
 import io.github.kusoroadeolu.cleap.PriorityQueue;
-import io.github.kusoroadeolu.cleap.latest.PaddedArenaEpochPQ.ArenaObject;
+import io.github.kusoroadeolu.cleap.latest.PaddedArenaGenerationPQ.ArenaObject;
 
 import java.lang.invoke.VarHandle;
 import java.util.Arrays;
@@ -298,14 +298,14 @@ class SharedConsumerFieldsRPad<E> extends SharedConsumerFields<E> {
 }
 
 
-public class PaddedArenaEpochPQ<E> extends SharedConsumerFieldsRPad<E> implements PriorityQueue<E> {
+public class PaddedArenaGenerationPQ<E> extends SharedConsumerFieldsRPad<E> implements PriorityQueue<E> {
 
-    public PaddedArenaEpochPQ(int capacity) {
+    public PaddedArenaGenerationPQ(int capacity) {
         super(capacity);
     }
 
 
-    public PaddedArenaEpochPQ(int capacity, long segmentLimit) {
+    public PaddedArenaGenerationPQ(int capacity, long segmentLimit) {
         super(capacity, segmentLimit);
     }
 

@@ -11,11 +11,11 @@ import java.util.concurrent.atomic.AtomicReferenceArray;
 import static io.github.kusoroadeolu.cleap.latest.Utils.*;
 
 
-class EpochSharedConsumerFields<E> extends SegmentLimitRPad<E> {
+class GenerationSharedConsumerFields<E> extends SegmentLimitRPad<E> {
 
     int state;
     final AtomicReferenceArray<Object> arena;
-    static final VarHandle STATE = fieldOffset(EpochSharedConsumerFields.class, "state", int.class);
+    static final VarHandle STATE = fieldOffset(GenerationSharedConsumerFields.class, "state", int.class);
 
     static final int ARENA_SIZE = Utils.roundToPowerOfTwo(NCPU);
     static final int MASK = ARENA_SIZE - 1;
@@ -27,7 +27,7 @@ class EpochSharedConsumerFields<E> extends SegmentLimitRPad<E> {
     static final int BACKOFF_SPINS = 40;
 
 
-    public EpochSharedConsumerFields(int capacity) {
+    public GenerationSharedConsumerFields(int capacity) {
         super(capacity);
         arena = new AtomicReferenceArray<>(arenaSize());
     }
@@ -61,7 +61,7 @@ class EpochSharedConsumerFields<E> extends SegmentLimitRPad<E> {
     }
 }
 
-class EpochSharedConsumerFieldsRPad<E> extends EpochSharedConsumerFields<E> {
+class GenerationSharedConsumerFieldsRPad<E> extends GenerationSharedConsumerFields<E> {
     byte b000,b001,b002,b003,b004,b005,b006,b007;//  8b
     byte b010,b011,b012,b013,b014,b015,b016,b017;// 16b
     byte b020,b021,b022,b023,b024,b025,b026,b027;// 24b
@@ -79,15 +79,15 @@ class EpochSharedConsumerFieldsRPad<E> extends EpochSharedConsumerFields<E> {
     byte b160,b161,b162,b163,b164,b165,b166,b167;//120b
     byte b170,b171,b172,b173,b174,b175,b176,b177;//128b
 
-    public EpochSharedConsumerFieldsRPad(int capacity) {
+    public GenerationSharedConsumerFieldsRPad(int capacity) {
         super(capacity);
     }
 }
 
 
-public class EpochPQ<E> extends EpochSharedConsumerFieldsRPad<E> implements PriorityQueue<E> {
+public class GenerationPQ<E> extends GenerationSharedConsumerFieldsRPad<E> implements PriorityQueue<E> {
 
-    public EpochPQ(int capacity) {
+    public GenerationPQ(int capacity) {
         super(capacity);
     }
 

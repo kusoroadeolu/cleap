@@ -4,17 +4,17 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class MpmcEpochPQTest {
+class MpmcgenerationPQTest {
 
     @Test
     void pollOnEmptyQueueReturnsNull() {
-        var queue = new MpmcEpochPQ<Integer>(8);
+        var queue = new MpmcGenerationPQ<Integer>(8);
         assertNull(queue.poll());
     }
 
     @Test
     void addThenPollSingleElement() {
-        var queue = new MpmcEpochPQ<Integer>(8);
+        var queue = new MpmcGenerationPQ<Integer>(8);
         assertTrue(queue.add(42));
         assertEquals(42, queue.poll());
         assertNull(queue.poll());
@@ -23,7 +23,7 @@ class MpmcEpochPQTest {
     @Test
     void capacityIsRoundedUpToPowerOfTwo() {
         // capacity 5 -> rounds to 8
-        var queue = new MpmcEpochPQ<Integer>(5);
+        var queue = new MpmcGenerationPQ<Integer>(5);
         for (int i = 0; i < 8; i++) {
             assertTrue(queue.add(i), "add should succeed for element " + i);
         }
@@ -32,7 +32,7 @@ class MpmcEpochPQTest {
 
     @Test
     void addReturnsFalseWhenQueueIsFull() {
-        var queue = new MpmcEpochPQ<Integer>(4); // rounds to 4
+        var queue = new MpmcGenerationPQ<Integer>(4); // rounds to 4
         assertTrue(queue.add(1));
         assertTrue(queue.add(2));
         assertTrue(queue.add(3));
@@ -42,7 +42,7 @@ class MpmcEpochPQTest {
 
     @Test
     void pollReturnsElementsInSortedOrder() {
-        var queue = new MpmcEpochPQ<Integer>(8);
+        var queue = new MpmcGenerationPQ<Integer>(8);
         int[] values = {5, 3, 4, 1, 2};
         for (int v : values) {
             assertTrue(queue.add(v));
@@ -65,7 +65,7 @@ class MpmcEpochPQTest {
 
     @Test
     void queueCanBeRefilledAfterBeingDrained() {
-        var queue = new MpmcEpochPQ<Integer>(4);
+        var queue = new MpmcGenerationPQ<Integer>(4);
 
         assertTrue(queue.add(1));
         assertTrue(queue.add(2));
@@ -82,7 +82,7 @@ class MpmcEpochPQTest {
 
     @Test
     void wraparoundAcrossMultipleFillDrainCycles() {
-        var queue = new MpmcEpochPQ<Integer>(4); // small capacity to force wraparound quickly
+        var queue = new MpmcGenerationPQ<Integer>(4); // small capacity to force wraparound quickly
 
         for (int cycle = 0; cycle < 5; cycle++) {
             assertTrue(queue.add(cycle * 10 + 1));
@@ -99,7 +99,7 @@ class MpmcEpochPQTest {
     @Test
     void singleElementPollDoesNotTriggerSegmentSort() {
         // diff == 1 in merge() should take the -1 shortcut path without sorting
-        var queue = new MpmcEpochPQ<Integer>(8);
+        var queue = new MpmcGenerationPQ<Integer>(8);
         assertTrue(queue.add(7));
         assertEquals(7, queue.poll());
     }

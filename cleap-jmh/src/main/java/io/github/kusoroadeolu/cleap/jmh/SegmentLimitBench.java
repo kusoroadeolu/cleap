@@ -1,9 +1,7 @@
 package io.github.kusoroadeolu.cleap.jmh;
 
 import io.github.kusoroadeolu.cleap.PriorityQueue;
-import io.github.kusoroadeolu.cleap.experimental.LockedPQ;
-import io.github.kusoroadeolu.cleap.latest.MpmcEpochPQ;
-import io.github.kusoroadeolu.cleap.latest.PaddedArenaEpochPQ;
+import io.github.kusoroadeolu.cleap.latest.PaddedArenaGenerationPQ;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
 import org.openjdk.jmh.runner.RunnerException;
@@ -32,7 +30,7 @@ public class SegmentLimitBench {
     public void setup() {
         int cap = 65536;
         queue = switch (type) {
-            case "PADDED_EPO" -> new PaddedArenaEpochPQ<>(cap, Long.parseLong(segmentLimit));
+            case "PADDED_EPO" -> new PaddedArenaGenerationPQ<>(cap, Long.parseLong(segmentLimit));
             default -> throw new RuntimeException();
         };
 

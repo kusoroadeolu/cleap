@@ -9,17 +9,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 
-class EpochPQTest {
+class generationPQTest {
 
-    private PaddedArenaEpochPQ<Integer> queue;
+    private PaddedArenaGenerationPQ<Integer> queue;
 
     @BeforeEach
     void setUp() {
-        queue = new PaddedArenaEpochPQ<>(16);
+        queue = new PaddedArenaGenerationPQ<>(16);
     }
 
     // Fills the queue via offer() until it returns false, returning how many succeeded.
-    private int fillToCapacity(PaddedArenaEpochPQ<Integer> q) {
+    private int fillToCapacity(PaddedArenaGenerationPQ<Integer> q) {
         int count = 0;
         while (q.offer(count)) {
             count++;
@@ -88,7 +88,7 @@ class EpochPQTest {
     void poll_moreThanSegmentSortLimit_stillReturnsAllSortedAcrossChunks() {
         // Use a larger queue so we can push past capacity/merge-limit boundaries
         // and verify chunked merging still produces a fully sorted drain.
-        PaddedArenaEpochPQ<Integer> q = new PaddedArenaEpochPQ<>(64);
+        PaddedArenaGenerationPQ<Integer> q = new PaddedArenaGenerationPQ<>(64);
         int n = fillToCapacity(q);
         assertTrue(n > 0);
 

@@ -186,10 +186,10 @@ pretty suboptimal. However for insert heavy workloads 100% inserts, all these de
 
 ## A simpler redesign (experimental)
 So far, I've been rethinking some choices, a new design I've emerged with (not necessarily a new design in that sense) but one
-that repurposes a well studied data structure. A MPMC Bounded Queue
+that repurposes a well studied data structure. A MPMC Fixed Capacity Queue
 
 
-We relax the invariants through logical deletion epochs (will be explained later). The heap invariant is not maintained as well
+We relax the invariants through logical deletion generations (will be explained later). The heap invariant is not maintained as well
 
 ### Pseudocode
 We rely on the MPMC as an abstraction for the pseudocode, though I'll implement it myself.
@@ -203,7 +203,7 @@ Assuming a producer index, consumer index and a consumer capacity (the index of 
 repeatedly:
 if consumer index == capacity
     if consumer index  == producer index, return empty
-    otherwise  a thread tries to start a merge (this begins a logical epoch) by acquiring a simple spin lock (by casing the capacity to the new one if we fail we spin on the capacity)
+    otherwise  a thread tries to start a merge (this begins a logical generation) by acquiring a simple spin lock (by casing the capacity to the new one if we fail we spin on the capacity)
     during a merge, we subset the array from consumer index (masked) to producer index or a capacity
     We copy this subset from the array into a new array, sort that array and recopy back into the original
     We then claim the first consumer index, before making the new capacity visible
@@ -211,17 +211,17 @@ otherwise
     MPMC poll
 
 
-### Logical epochs
-The idea of logical epochs is to solve the issue of later arriving higher priority values
-We define that an epoch starts when the structure is initially made or after a merge and ends when a merge begins
-We sort values by their epoch first, then their actual priority, so we trade perfect strictness for relaxed priority semantics
-Epoch sizes are also bounded to prevent tail latency spikes
+### Logical generations
+The idea of logical generations is to solve the issue of later arriving higher priority values
+We define that an generation starts when the structure is initially made or after a merge and ends when a merge begins
+We sort values by their generation first, then their actual priority, so we trade perfect strictness for relaxed priority semantics
+generation sizes are also bounded to prevent tail latency spikes
 
 For example take an initial array of capacity 5 with these values
 
-7 2 5 3 null - epoch (0)
+7 2 5 3 null - generation (0)
 
-A delete thread comes up and starts a merge and logically increases the epoch by 1. Values 7 to 3 are classified as being in the 0 epoch
+A delete thread comes up and starts a merge and logically increases the generation by 1. Values 7 to 3 are classified as being in the 0 generation
 
-Hence if a later arriving priority value like `1` comes later, it is seen as a lower priority value as elements are classified by their epoch
+Hence if a later arriving priority value like `1` comes later, it is seen as a lower priority value as elements are classified by their generation
 then actual priority. Relaxing strict correctness for perf

@@ -239,9 +239,9 @@ class StatusFieldRPad<E> extends MpmcStatusField<E> {
 
 
 
-public class MpmcEpochPQ<E> extends StatusFieldRPad<E> implements PriorityQueue<E> {
+public class MpmcGenerationPQ<E> extends StatusFieldRPad<E> implements PriorityQueue<E> {
 
-    public MpmcEpochPQ(int capacity) {
+    public MpmcGenerationPQ(int capacity) {
         super(capacity);
     }
 
@@ -335,6 +335,8 @@ public class MpmcEpochPQ<E> extends StatusFieldRPad<E> implements PriorityQueue<
         return (int) (lvProducerIndex() - lvConsumerIndex());
     }
 
+
+    //Sort early generations
     long segmentSort(long cIndex, long pIndex, long mask , Object[] buffer, long[] sequence) {
         long mmg = Math.min(pIndex, cIndex + segmentLimit);
         int diff = (int) (mmg - cIndex);

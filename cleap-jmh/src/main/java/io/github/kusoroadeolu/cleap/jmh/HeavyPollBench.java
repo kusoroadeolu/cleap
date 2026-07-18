@@ -5,9 +5,9 @@ import io.github.kusoroadeolu.cleap.dualarray.CombiningLBBoundedPQ;
 import io.github.kusoroadeolu.cleap.dualarray.LBBoundedPQ;
 import io.github.kusoroadeolu.cleap.experimental.LockedPQ;
 import io.github.kusoroadeolu.cleap.dualarray.OrderedBoundedPQ;
-import io.github.kusoroadeolu.cleap.latest.EpochPQ;
-import io.github.kusoroadeolu.cleap.latest.PaddedArenaEpochPQ;
-import io.github.kusoroadeolu.cleap.latest.MpmcEpochPQ;
+import io.github.kusoroadeolu.cleap.latest.GenerationPQ;
+import io.github.kusoroadeolu.cleap.latest.PaddedArenaGenerationPQ;
+import io.github.kusoroadeolu.cleap.latest.MpmcGenerationPQ;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
 import org.openjdk.jmh.runner.RunnerException;
@@ -50,9 +50,9 @@ public class HeavyPollBench {
         int cap = Integer.parseInt(this.cap);
         queue = switch (type) {
             case "LOCK" -> new LockedPQ<>(cap);
-            case "EPO" -> new EpochPQ<>(cap);
-            case "PADDED_EPO" -> new PaddedArenaEpochPQ<>(cap);
-            case "MPMC_EPO" -> new MpmcEpochPQ<>(cap);
+            case "EPO" -> new GenerationPQ<>(cap);
+            case "PADDED_EPO" -> new PaddedArenaGenerationPQ<>(cap);
+            case "MPMC_EPO" -> new MpmcGenerationPQ<>(cap);
             case "OBQ" -> new OrderedBoundedPQ<>(cap);
             case "ELB" -> new CombiningLBBoundedPQ<>(cap);
             case "LB" -> new LBBoundedPQ<>(cap);

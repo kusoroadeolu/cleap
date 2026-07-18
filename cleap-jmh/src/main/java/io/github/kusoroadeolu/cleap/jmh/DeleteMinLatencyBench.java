@@ -2,8 +2,8 @@ package io.github.kusoroadeolu.cleap.jmh;
 
 import io.github.kusoroadeolu.cleap.PriorityQueue;
 import io.github.kusoroadeolu.cleap.experimental.LockedPQ;
-import io.github.kusoroadeolu.cleap.latest.MpmcEpochPQ;
-import io.github.kusoroadeolu.cleap.latest.PaddedArenaEpochPQ;
+import io.github.kusoroadeolu.cleap.latest.MpmcGenerationPQ;
+import io.github.kusoroadeolu.cleap.latest.PaddedArenaGenerationPQ;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
 import org.openjdk.jmh.profile.JavaFlightRecorderProfiler;
@@ -32,8 +32,8 @@ public class DeleteMinLatencyBench {
         int cap = 65536;
         queue = switch (type) {
             case "LOCK" -> new LockedPQ<>(cap);
-            case "PADDED_EPO" -> new PaddedArenaEpochPQ<>(cap);
-            case "MPMC_EPO" -> new MpmcEpochPQ<>(cap);
+            case "PADDED_EPO" -> new PaddedArenaGenerationPQ<>(cap);
+            case "MPMC_EPO" -> new MpmcGenerationPQ<>(cap);
             default -> throw new RuntimeException();
         };
 
