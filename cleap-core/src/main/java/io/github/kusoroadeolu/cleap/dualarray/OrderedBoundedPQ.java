@@ -27,7 +27,7 @@ public class OrderedBoundedPQ<T> implements PriorityQueue<T> {
             var da = deleteArray;
             int size = (int) I_INDEX.get(da);
 
-            int dSize = (int) D_INDEX.getAcquire(da);
+            int dSize = (int) D_INDEX.getVolatile(da);
             if ((dSize + size) >= capacity) return false;
             pq.add(t, size);
             I_INDEX.setRelease(da, 1);
