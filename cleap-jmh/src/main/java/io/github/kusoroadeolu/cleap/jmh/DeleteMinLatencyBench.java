@@ -26,7 +26,7 @@ public class DeleteMinLatencyBench {
 
     private PriorityQueue<Integer> queue;
 
-    @Param({"LBPQ", "OBQ", "MPMC_EPO", "PADDED_EPO", "LOCK"})
+    @Param({"LBPQ", "MPMC_EPO", "PADDED_EPO", "LOCK", "OBQ"})
     private String type;
 
     @Setup
@@ -293,33 +293,33 @@ DeleteMinLatencyBench.ratio_4_4:p0.99                    LBPQ  sample           
 DeleteMinLatencyBench.ratio_4_4:p0.999                   LBPQ  sample             357.888          us/op
 DeleteMinLatencyBench.ratio_4_4:p0.9999                  LBPQ  sample             967.680          us/op
 DeleteMinLatencyBench.ratio_4_4:p1.00                    LBPQ  sample           28901.376          us/op
-DeleteMinLatencyBench.ratio_4_4                           OBQ  sample  4265474      3.652 ± 0.053  us/op
-DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4             OBQ  sample  2282059      5.342 ± 0.085  us/op
+DeleteMinLatencyBench.ratio_4_4                           OBQ  sample  7632357      3.443 ± 0.061  us/op
+DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4             OBQ  sample  3942762      3.288 ± 0.090  us/op
 DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.00       OBQ  sample                 ≈ 0          us/op
-DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.50       OBQ  sample               0.100          us/op
-DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.90       OBQ  sample               1.300          us/op
-DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.95       OBQ  sample               5.800          us/op
-DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.99       OBQ  sample             131.328          us/op
-DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.999      OBQ  sample             299.489          us/op
-DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.9999     OBQ  sample             718.426          us/op
-DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p1.00       OBQ  sample           14139.392          us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4                OBQ  sample  1983415      1.708 ± 0.058  us/op
+DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.50       OBQ  sample               0.200          us/op
+DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.90       OBQ  sample               0.300          us/op
+DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.95       OBQ  sample               0.500          us/op
+DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.99       OBQ  sample              73.600          us/op
+DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.999      OBQ  sample             526.336          us/op
+DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.9999     OBQ  sample            2066.432          us/op
+DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p1.00       OBQ  sample           11550.720          us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4                OBQ  sample  3689595      3.610 ± 0.083  us/op
 DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.00          OBQ  sample                 ≈ 0          us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.50          OBQ  sample               0.100          us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.90          OBQ  sample               0.300          us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.95          OBQ  sample               0.600          us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.99          OBQ  sample              64.640          us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.999         OBQ  sample             175.616          us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.9999        OBQ  sample             376.145          us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4:p1.00          OBQ  sample           13991.936          us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.50          OBQ  sample               0.200          us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.90          OBQ  sample               0.600          us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.95          OBQ  sample               0.900          us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.99          OBQ  sample             100.224          us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.999         OBQ  sample             508.928          us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.9999        OBQ  sample            1902.675          us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4:p1.00          OBQ  sample           12189.696          us/op
 DeleteMinLatencyBench.ratio_4_4:p0.00                     OBQ  sample                 ≈ 0          us/op
-DeleteMinLatencyBench.ratio_4_4:p0.50                     OBQ  sample               0.100          us/op
-DeleteMinLatencyBench.ratio_4_4:p0.90                     OBQ  sample               0.900          us/op
-DeleteMinLatencyBench.ratio_4_4:p0.95                     OBQ  sample               1.700          us/op
-DeleteMinLatencyBench.ratio_4_4:p0.99                     OBQ  sample             108.416          us/op
-DeleteMinLatencyBench.ratio_4_4:p0.999                    OBQ  sample             256.256          us/op
-DeleteMinLatencyBench.ratio_4_4:p0.9999                   OBQ  sample             573.440          us/op
-DeleteMinLatencyBench.ratio_4_4:p1.00                     OBQ  sample           14139.392          us/op
+DeleteMinLatencyBench.ratio_4_4:p0.50                     OBQ  sample               0.200          us/op
+DeleteMinLatencyBench.ratio_4_4:p0.90                     OBQ  sample               0.400          us/op
+DeleteMinLatencyBench.ratio_4_4:p0.95                     OBQ  sample               0.800          us/op
+DeleteMinLatencyBench.ratio_4_4:p0.99                     OBQ  sample              89.600          us/op
+DeleteMinLatencyBench.ratio_4_4:p0.999                    OBQ  sample             519.168          us/op
+DeleteMinLatencyBench.ratio_4_4:p0.9999                   OBQ  sample            2007.040          us/op
+DeleteMinLatencyBench.ratio_4_4:p1.00                     OBQ  sample           12189.696          us/op
 DeleteMinLatencyBench.ratio_6_2                          LBPQ  sample  3620464     14.912 ± 0.165  us/op
 DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2            LBPQ  sample   967557      1.211 ± 0.252  us/op
 DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.00      LBPQ  sample                 ≈ 0          us/op
@@ -347,33 +347,33 @@ DeleteMinLatencyBench.ratio_6_2:p0.99                    LBPQ  sample           
 DeleteMinLatencyBench.ratio_6_2:p0.999                   LBPQ  sample             535.552          us/op
 DeleteMinLatencyBench.ratio_6_2:p0.9999                  LBPQ  sample            1554.337          us/op
 DeleteMinLatencyBench.ratio_6_2:p1.00                    LBPQ  sample           22478.848          us/op
-DeleteMinLatencyBench.ratio_6_2                           OBQ  sample  4965434      2.458 ± 0.039  us/op
-DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2             OBQ  sample  1185835      3.744 ± 0.104  us/op
+DeleteMinLatencyBench.ratio_6_2                           OBQ  sample  6301064      5.108 ± 0.078  us/op
+DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2             OBQ  sample  1940607      2.180 ± 0.101  us/op
 DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.00       OBQ  sample                 ≈ 0          us/op
-DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.50       OBQ  sample               0.100          us/op
-DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.90       OBQ  sample               0.500          us/op
-DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.95       OBQ  sample               1.100          us/op
-DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.99       OBQ  sample             113.920          us/op
-DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.999      OBQ  sample             256.768          us/op
-DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.9999     OBQ  sample             537.002          us/op
-DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p1.00       OBQ  sample           13107.200          us/op
-DeleteMinLatencyBench.ratio_6_2:insert_6_2                OBQ  sample  3779599      2.054 ± 0.039  us/op
+DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.50       OBQ  sample               0.200          us/op
+DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.90       OBQ  sample               0.200          us/op
+DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.95       OBQ  sample               0.300          us/op
+DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.99       OBQ  sample               2.100          us/op
+DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.999      OBQ  sample             520.393          us/op
+DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.9999     OBQ  sample            1693.696          us/op
+DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p1.00       OBQ  sample           16400.384          us/op
+DeleteMinLatencyBench.ratio_6_2:insert_6_2                OBQ  sample  4360457      6.411 ± 0.103  us/op
 DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.00          OBQ  sample                 ≈ 0          us/op
-DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.50          OBQ  sample               0.100          us/op
-DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.90          OBQ  sample               0.200          us/op
-DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.95          OBQ  sample               0.700          us/op
-DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.99          OBQ  sample              85.248          us/op
-DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.999         OBQ  sample             177.664          us/op
-DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.9999        OBQ  sample             339.456          us/op
-DeleteMinLatencyBench.ratio_6_2:insert_6_2:p1.00          OBQ  sample           13058.048          us/op
+DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.50          OBQ  sample               0.200          us/op
+DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.90          OBQ  sample               0.500          us/op
+DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.95          OBQ  sample               0.900          us/op
+DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.99          OBQ  sample             196.608          us/op
+DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.999         OBQ  sample             932.864          us/op
+DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.9999        OBQ  sample            2170.880          us/op
+DeleteMinLatencyBench.ratio_6_2:insert_6_2:p1.00          OBQ  sample           16367.616          us/op
 DeleteMinLatencyBench.ratio_6_2:p0.00                     OBQ  sample                 ≈ 0          us/op
-DeleteMinLatencyBench.ratio_6_2:p0.50                     OBQ  sample               0.100          us/op
-DeleteMinLatencyBench.ratio_6_2:p0.90                     OBQ  sample               0.300          us/op
-DeleteMinLatencyBench.ratio_6_2:p0.95                     OBQ  sample               0.800          us/op
-DeleteMinLatencyBench.ratio_6_2:p0.99                     OBQ  sample              90.880          us/op
-DeleteMinLatencyBench.ratio_6_2:p0.999                    OBQ  sample             205.056          us/op
-DeleteMinLatencyBench.ratio_6_2:p0.9999                   OBQ  sample             396.010          us/op
-DeleteMinLatencyBench.ratio_6_2:p1.00                     OBQ  sample           13107.200          us/op
+DeleteMinLatencyBench.ratio_6_2:p0.50                     OBQ  sample               0.200          us/op
+DeleteMinLatencyBench.ratio_6_2:p0.90                     OBQ  sample               0.400          us/op
+DeleteMinLatencyBench.ratio_6_2:p0.95                     OBQ  sample               0.600          us/op
+DeleteMinLatencyBench.ratio_6_2:p0.99                     OBQ  sample             156.160          us/op
+DeleteMinLatencyBench.ratio_6_2:p0.999                    OBQ  sample             831.488          us/op
+DeleteMinLatencyBench.ratio_6_2:p0.9999                   OBQ  sample            2101.248          us/op
+DeleteMinLatencyBench.ratio_6_2:p1.00                     OBQ  sample           16400.384          us/op
 * */
 
 

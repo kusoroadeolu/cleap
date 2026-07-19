@@ -26,7 +26,7 @@ public class DeleteMinThrptBench {
     private PriorityQueue<Integer> queue;
 
 
-    @Param({"LBPQ", "OBQ", "MPMC_EPO", "PADDED_EPO", "LOCK"})
+    @Param({"LBPQ", "MPMC_EPO", "PADDED_EPO", "LOCK", "OBQ"})
     private String type;
 
     @Setup
@@ -129,13 +129,13 @@ DeleteMinThrptBench.ratio_4_4:readerEmpty            LBPQ  thrpt   20   24.157 �
 DeleteMinThrptBench.ratio_4_4:readerSucceeded        LBPQ  thrpt   20    1.794 ±  0.107  ops/us
 DeleteMinThrptBench.ratio_4_4:writerRejected         LBPQ  thrpt   20    0.002 ±  0.006  ops/us
 DeleteMinThrptBench.ratio_4_4:writerSucceeded        LBPQ  thrpt   20    1.795 ±  0.107  ops/us
-DeleteMinThrptBench.ratio_4_4                         OBQ  thrpt   20   18.217 ±  0.141  ops/us
-DeleteMinThrptBench.ratio_4_4:deleteMin_4_4           OBQ  thrpt   20    2.669 ±  0.056  ops/us
-DeleteMinThrptBench.ratio_4_4:insert_4_4              OBQ  thrpt   20   15.548 ±  0.179  ops/us
-DeleteMinThrptBench.ratio_4_4:readerEmpty             OBQ  thrpt   20    2.556 ±  0.038  ops/us
-DeleteMinThrptBench.ratio_4_4:readerSucceeded         OBQ  thrpt   20    0.115 ±  0.023  ops/us
-DeleteMinThrptBench.ratio_4_4:writerRejected          OBQ  thrpt   20      ≈ 0           ops/us
-DeleteMinThrptBench.ratio_4_4:writerSucceeded         OBQ  thrpt   20   15.552 ±  0.178  ops/us
+DeleteMinThrptBench.ratio_4_4                     OBQ  thrpt   30  10.416 ± 0.085  ops/us
+DeleteMinThrptBench.ratio_4_4:deleteMin_4_4       OBQ  thrpt   30   5.510 ± 0.086  ops/us
+DeleteMinThrptBench.ratio_4_4:insert_4_4          OBQ  thrpt   30   4.906 ± 0.061  ops/us
+DeleteMinThrptBench.ratio_4_4:readerEmpty         OBQ  thrpt   30   0.605 ± 0.123  ops/us
+DeleteMinThrptBench.ratio_4_4:readerSucceeded     OBQ  thrpt   30   4.908 ± 0.063  ops/us
+DeleteMinThrptBench.ratio_4_4:writerRejected      OBQ  thrpt   30   0.001 ± 0.003  ops/us
+DeleteMinThrptBench.ratio_4_4:writerSucceeded     OBQ  thrpt   30   4.907 ± 0.063  ops/us
 DeleteMinThrptBench.ratio_4_4                    MPMC_EPO  thrpt   20  202.122 ±  4.252  ops/us
 DeleteMinThrptBench.ratio_4_4:deleteMin_4_4      MPMC_EPO  thrpt   20    3.262 ±  0.083  ops/us
 DeleteMinThrptBench.ratio_4_4:insert_4_4         MPMC_EPO  thrpt   20  198.860 ±  4.215  ops/us
@@ -164,13 +164,13 @@ DeleteMinThrptBench.ratio_6_2:readerEmpty            LBPQ  thrpt   20   50.340 �
 DeleteMinThrptBench.ratio_6_2:readerSucceeded        LBPQ  thrpt   20    1.582 ±  0.194  ops/us
 DeleteMinThrptBench.ratio_6_2:writerRejected         LBPQ  thrpt   20    0.076 ±  0.248  ops/us
 DeleteMinThrptBench.ratio_6_2:writerSucceeded        LBPQ  thrpt   20    1.582 ±  0.186  ops/us
-DeleteMinThrptBench.ratio_6_2                         OBQ  thrpt   20   20.550 ±  6.498  ops/us
-DeleteMinThrptBench.ratio_6_2:deleteMin_6_2           OBQ  thrpt   20    4.660 ±  7.481  ops/us
-DeleteMinThrptBench.ratio_6_2:insert_6_2              OBQ  thrpt   20   15.891 ±  1.186  ops/us
-DeleteMinThrptBench.ratio_6_2:readerEmpty             OBQ  thrpt   20    4.568 ±  7.514  ops/us
-DeleteMinThrptBench.ratio_6_2:readerSucceeded         OBQ  thrpt   20    0.097 ±  0.041  ops/us
-DeleteMinThrptBench.ratio_6_2:writerRejected          OBQ  thrpt   20    1.200 ±  3.219  ops/us
-DeleteMinThrptBench.ratio_6_2:writerSucceeded         OBQ  thrpt   20   14.695 ±  4.251  ops/us
+DeleteMinThrptBench.ratio_6_2                     OBQ  thrpt   30  10.334 ± 0.212  ops/us
+DeleteMinThrptBench.ratio_6_2:deleteMin_6_2       OBQ  thrpt   30   5.362 ± 0.109  ops/us
+DeleteMinThrptBench.ratio_6_2:insert_6_2          OBQ  thrpt   30   4.972 ± 0.104  ops/us
+DeleteMinThrptBench.ratio_6_2:readerEmpty         OBQ  thrpt   30   0.391 ± 0.019  ops/us
+DeleteMinThrptBench.ratio_6_2:readerSucceeded     OBQ  thrpt   30   4.973 ± 0.104  ops/us
+DeleteMinThrptBench.ratio_6_2:writerRejected      OBQ  thrpt   30     ≈ 0          ops/us
+DeleteMinThrptBench.ratio_6_2:writerSucceeded     OBQ  thrpt   30   4.973 ± 0.104  ops/us
 DeleteMinThrptBench.ratio_6_2                    MPMC_EPO  thrpt   20  236.137 ±  9.092  ops/us
 DeleteMinThrptBench.ratio_6_2:deleteMin_6_2      MPMC_EPO  thrpt   20    3.514 ±  0.238  ops/us
 DeleteMinThrptBench.ratio_6_2:insert_6_2         MPMC_EPO  thrpt   20  232.623 ±  9.214  ops/us
