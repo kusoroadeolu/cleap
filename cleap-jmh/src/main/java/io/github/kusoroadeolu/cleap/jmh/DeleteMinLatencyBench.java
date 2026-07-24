@@ -6,13 +6,17 @@ import io.github.kusoroadeolu.cleap.dualarray.OrderedBoundedPQ;
 import io.github.kusoroadeolu.cleap.experimental.LockedPQ;
 import io.github.kusoroadeolu.cleap.latest.MpmcGenerationPQ;
 import io.github.kusoroadeolu.cleap.latest.PaddedArenaGenerationPQ;
+import io.github.kusoroadeolu.jmhpretty.JmhPrettyPrinter;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
-import org.openjdk.jmh.profile.JavaFlightRecorderProfiler;
+import org.openjdk.jmh.results.format.ResultFormatType;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
+import java.awt.*;
+import java.awt.geom.AffineTransform;
+import java.nio.file.Path;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
@@ -26,7 +30,7 @@ public class DeleteMinLatencyBench {
 
     private PriorityQueue<Integer> queue;
 
-    @Param({"LBPQ", "MPMC_EPO", "PADDED_EPO", "LOCK", "OBQ"})
+    @Param({"LBPQ", "LOCK", "OBQ"})
     private String type;
 
     @Setup
@@ -35,8 +39,8 @@ public class DeleteMinLatencyBench {
         queue = switch (type) {
             case "LBPQ" -> new LBBoundedPQ<>(cap);
             case "OBQ" -> new OrderedBoundedPQ<>(cap);
-            case "MPMC_EPO" -> new MpmcGenerationPQ<>(cap);
-            case "PADDED_EPO" -> new PaddedArenaGenerationPQ<>(cap);
+            case "MPMC-GEN" -> new MpmcGenerationPQ<>(cap);
+            case "PADDED-GEN" -> new PaddedArenaGenerationPQ<>(cap);
             case "LOCK" -> new LockedPQ<>(cap);
             default -> throw new RuntimeException();
         };
@@ -46,20 +50,20 @@ public class DeleteMinLatencyBench {
             queue.add(ThreadLocalRandom.current().nextInt(1_000_000));
         }
     }
-
-    @Group("ratio_6_2")
-    @GroupThreads(6)
-    @Benchmark
-    public void insert_6_2(Blackhole bh) {
-        bh.consume(queue.add(ThreadLocalRandom.current().nextInt(1_000_000)));
-    }
-
-    @Group("ratio_6_2")
-    @GroupThreads(2)
-    @Benchmark
-    public void deleteMin_6_2(Blackhole bh) {
-        bh.consume(queue.poll());
-    }
+//
+//    @Group("ratio_6_2")
+//    @GroupThreads(6)
+//    @Benchmark
+//    public void insert_6_2(Blackhole bh) {
+//        bh.consume(queue.add(ThreadLocalRandom.current().nextInt(1_000_000)));
+//    }
+//
+//    @Group("ratio_6_2")
+//    @GroupThreads(2)
+//    @Benchmark
+//    public void deleteMin_6_2(Blackhole bh) {
+//        bh.consume(queue.poll());
+//    }
 
     @Group("ratio_4_4")
     @GroupThreads(4)
@@ -79,9 +83,12 @@ public class DeleteMinLatencyBench {
         static void main() throws RunnerException {
             Options options = new OptionsBuilder()
                     .include(DeleteMinLatencyBench.class.getSimpleName())
-                    .addProfiler(JavaFlightRecorderProfiler.class, "dir=C:\\jfr-hp")
+                    .result("results.json")
+                    .resultFormat(ResultFormatType.JSON)
                     .build();
             new org.openjdk.jmh.runner.Runner(options).run();
+            JmhPrettyPrinter.builder().build().print(Path.of(Path.of(".").toAbsolutePath().toString(), "target", "results.json").toString());
+
         }
     }
 
@@ -153,173 +160,174 @@ DeleteMinLatencyBench.ratio_6_2:p1.00                        LOCK  sample       
 
 /*
 * Benchmark                                                  (type)    Mode      Cnt      Score   Error  Units
-DeleteMinLatencyBench.ratio_4_4                          MPMC_EPO  sample  4805020      1.099 ± 0.048  us/op
-DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4            MPMC_EPO  sample  2031101      2.502 ± 0.111  us/op
-DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.00      MPMC_EPO  sample                 ≈ 0          us/op
-DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.50      MPMC_EPO  sample               0.300          us/op
-DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.90      MPMC_EPO  sample               0.900          us/op
-DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.95      MPMC_EPO  sample               1.300          us/op
-DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.99      MPMC_EPO  sample               5.200          us/op
-DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.999     MPMC_EPO  sample             238.848          us/op
-DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.9999    MPMC_EPO  sample             759.469          us/op
-DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p1.00      MPMC_EPO  sample           20250.624          us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4               MPMC_EPO  sample  2773919      0.071 ± 0.019  us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.00         MPMC_EPO  sample                 ≈ 0          us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.50         MPMC_EPO  sample                 ≈ 0          us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.90         MPMC_EPO  sample               0.100          us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.95         MPMC_EPO  sample               0.100          us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.99         MPMC_EPO  sample               0.400          us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.999        MPMC_EPO  sample               1.800          us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.9999       MPMC_EPO  sample              14.192          us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4:p1.00         MPMC_EPO  sample           10469.376          us/op
-DeleteMinLatencyBench.ratio_4_4:p0.00                    MPMC_EPO  sample                 ≈ 0          us/op
-DeleteMinLatencyBench.ratio_4_4:p0.50                    MPMC_EPO  sample               0.100          us/op
-DeleteMinLatencyBench.ratio_4_4:p0.90                    MPMC_EPO  sample               0.600          us/op
-DeleteMinLatencyBench.ratio_4_4:p0.95                    MPMC_EPO  sample               0.900          us/op
-DeleteMinLatencyBench.ratio_4_4:p0.99                    MPMC_EPO  sample               1.900          us/op
-DeleteMinLatencyBench.ratio_4_4:p0.999                   MPMC_EPO  sample             227.840          us/op
-DeleteMinLatencyBench.ratio_4_4:p0.9999                  MPMC_EPO  sample             275.968          us/op
-DeleteMinLatencyBench.ratio_4_4:p1.00                    MPMC_EPO  sample           20250.624          us/op
-DeleteMinLatencyBench.ratio_4_4                        PADDED_EPO  sample  5093995      0.888 ± 0.043  us/op
-DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4          PADDED_EPO  sample  2301297      1.886 ± 0.092  us/op
-DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.00    PADDED_EPO  sample                 ≈ 0          us/op
-DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.50    PADDED_EPO  sample               0.100          us/op
-DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.90    PADDED_EPO  sample               0.200          us/op
-DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.95    PADDED_EPO  sample               2.000          us/op
-DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.99    PADDED_EPO  sample               2.200          us/op
-DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.999   PADDED_EPO  sample             238.080          us/op
-DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.9999  PADDED_EPO  sample             342.907          us/op
-DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p1.00    PADDED_EPO  sample           19791.872          us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4             PADDED_EPO  sample  2792698      0.067 ± 0.017  us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.00       PADDED_EPO  sample                 ≈ 0          us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.50       PADDED_EPO  sample                 ≈ 0          us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.90       PADDED_EPO  sample               0.100          us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.95       PADDED_EPO  sample               0.100          us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.99       PADDED_EPO  sample               0.400          us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.999      PADDED_EPO  sample               1.600          us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.9999     PADDED_EPO  sample              14.192          us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4:p1.00       PADDED_EPO  sample           13565.952          us/op
-DeleteMinLatencyBench.ratio_4_4:p0.00                  PADDED_EPO  sample                 ≈ 0          us/op
-DeleteMinLatencyBench.ratio_4_4:p0.50                  PADDED_EPO  sample                 ≈ 0          us/op
-DeleteMinLatencyBench.ratio_4_4:p0.90                  PADDED_EPO  sample               0.100          us/op
-DeleteMinLatencyBench.ratio_4_4:p0.95                  PADDED_EPO  sample               0.200          us/op
-DeleteMinLatencyBench.ratio_4_4:p0.99                  PADDED_EPO  sample               2.100          us/op
-DeleteMinLatencyBench.ratio_4_4:p0.999                 PADDED_EPO  sample             226.304          us/op
-DeleteMinLatencyBench.ratio_4_4:p0.9999                PADDED_EPO  sample             256.768          us/op
-DeleteMinLatencyBench.ratio_4_4:p1.00                  PADDED_EPO  sample           19791.872          us/op
-DeleteMinLatencyBench.ratio_6_2                          MPMC_EPO  sample  4543958      0.444 ± 0.025  us/op
-DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2            MPMC_EPO  sample  1026636      1.690 ± 0.079  us/op
-DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.00      MPMC_EPO  sample                 ≈ 0          us/op
-DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.50      MPMC_EPO  sample               0.100          us/op
-DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.90      MPMC_EPO  sample               0.400          us/op
-DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.95      MPMC_EPO  sample               0.700          us/op
-DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.99      MPMC_EPO  sample               1.600          us/op
-DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.999     MPMC_EPO  sample             252.672          us/op
-DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.9999    MPMC_EPO  sample             498.040          us/op
-DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p1.00      MPMC_EPO  sample            5996.544          us/op
-DeleteMinLatencyBench.ratio_6_2:insert_6_2               MPMC_EPO  sample  3517322      0.080 ± 0.023  us/op
-DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.00         MPMC_EPO  sample                 ≈ 0          us/op
-DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.50         MPMC_EPO  sample                 ≈ 0          us/op
-DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.90         MPMC_EPO  sample               0.100          us/op
-DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.95         MPMC_EPO  sample               0.100          us/op
-DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.99         MPMC_EPO  sample               0.500          us/op
-DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.999        MPMC_EPO  sample               3.400          us/op
-DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.9999       MPMC_EPO  sample              15.118          us/op
-DeleteMinLatencyBench.ratio_6_2:insert_6_2:p1.00         MPMC_EPO  sample           19791.872          us/op
-DeleteMinLatencyBench.ratio_6_2:p0.00                    MPMC_EPO  sample                 ≈ 0          us/op
-DeleteMinLatencyBench.ratio_6_2:p0.50                    MPMC_EPO  sample               0.100          us/op
-DeleteMinLatencyBench.ratio_6_2:p0.90                    MPMC_EPO  sample               0.100          us/op
-DeleteMinLatencyBench.ratio_6_2:p0.95                    MPMC_EPO  sample               0.300          us/op
-DeleteMinLatencyBench.ratio_6_2:p0.99                    MPMC_EPO  sample               1.000          us/op
-DeleteMinLatencyBench.ratio_6_2:p0.999                   MPMC_EPO  sample             223.744          us/op
-DeleteMinLatencyBench.ratio_6_2:p0.9999                  MPMC_EPO  sample             262.144          us/op
-DeleteMinLatencyBench.ratio_6_2:p1.00                    MPMC_EPO  sample           19791.872          us/op
-DeleteMinLatencyBench.ratio_6_2                        PADDED_EPO  sample  5168325      0.349 ± 0.017  us/op
-DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2          PADDED_EPO  sample  1146238      1.340 ± 0.064  us/op
-DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.00    PADDED_EPO  sample                 ≈ 0          us/op
-DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.50    PADDED_EPO  sample               0.100          us/op
-DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.90    PADDED_EPO  sample               0.200          us/op
-DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.95    PADDED_EPO  sample               0.200          us/op
-DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.99    PADDED_EPO  sample               2.100          us/op
-DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.999   PADDED_EPO  sample             246.784          us/op
-DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.9999  PADDED_EPO  sample             324.674          us/op
-DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p1.00    PADDED_EPO  sample            6258.688          us/op
-DeleteMinLatencyBench.ratio_6_2:insert_6_2             PADDED_EPO  sample  4022087      0.066 ± 0.012  us/op
-DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.00       PADDED_EPO  sample                 ≈ 0          us/op
-DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.50       PADDED_EPO  sample                 ≈ 0          us/op
-DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.90       PADDED_EPO  sample               0.100          us/op
-DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.95       PADDED_EPO  sample               0.100          us/op
-DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.99       PADDED_EPO  sample               0.400          us/op
-DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.999      PADDED_EPO  sample               3.800          us/op
-DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.9999     PADDED_EPO  sample              14.192          us/op
-DeleteMinLatencyBench.ratio_6_2:insert_6_2:p1.00       PADDED_EPO  sample           13139.968          us/op
-DeleteMinLatencyBench.ratio_6_2:p0.00                  PADDED_EPO  sample                 ≈ 0          us/op
-DeleteMinLatencyBench.ratio_6_2:p0.50                  PADDED_EPO  sample                 ≈ 0          us/op
-DeleteMinLatencyBench.ratio_6_2:p0.90                  PADDED_EPO  sample               0.100          us/op
-DeleteMinLatencyBench.ratio_6_2:p0.95                  PADDED_EPO  sample               0.100          us/op
-DeleteMinLatencyBench.ratio_6_2:p0.99                  PADDED_EPO  sample               1.400          us/op
-DeleteMinLatencyBench.ratio_6_2:p0.999                 PADDED_EPO  sample             174.848          us/op
-DeleteMinLatencyBench.ratio_6_2:p0.9999                PADDED_EPO  sample             255.531          us/op
-DeleteMinLatencyBench.ratio_6_2:p1.00                  PADDED_EPO  sample           13139.968          us/op
+DeleteMinLatencyBench.ratio_4_4                          MPMC-GEN  sample  4805020      1.099 ± 0.048  us/op
+DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4            MPMC-GEN  sample  2031101      2.502 ± 0.111  us/op
+DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.00      MPMC-GEN  sample                 ≈ 0          us/op
+DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.50      MPMC-GEN  sample               0.300          us/op
+DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.90      MPMC-GEN  sample               0.900          us/op
+DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.95      MPMC-GEN  sample               1.300          us/op
+DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.99      MPMC-GEN  sample               5.200          us/op
+DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.999     MPMC-GEN  sample             238.848          us/op
+DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.9999    MPMC-GEN  sample             759.469          us/op
+DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p1.00      MPMC-GEN  sample           20250.624          us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4               MPMC-GEN  sample  2773919      0.071 ± 0.019  us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.00         MPMC-GEN  sample                 ≈ 0          us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.50         MPMC-GEN  sample                 ≈ 0          us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.90         MPMC-GEN  sample               0.100          us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.95         MPMC-GEN  sample               0.100          us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.99         MPMC-GEN  sample               0.400          us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.999        MPMC-GEN  sample               1.800          us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.9999       MPMC-GEN  sample              14.192          us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4:p1.00         MPMC-GEN  sample           10469.376          us/op
+DeleteMinLatencyBench.ratio_4_4:p0.00                    MPMC-GEN  sample                 ≈ 0          us/op
+DeleteMinLatencyBench.ratio_4_4:p0.50                    MPMC-GEN  sample               0.100          us/op
+DeleteMinLatencyBench.ratio_4_4:p0.90                    MPMC-GEN  sample               0.600          us/op
+DeleteMinLatencyBench.ratio_4_4:p0.95                    MPMC-GEN  sample               0.900          us/op
+DeleteMinLatencyBench.ratio_4_4:p0.99                    MPMC-GEN  sample               1.900          us/op
+DeleteMinLatencyBench.ratio_4_4:p0.999                   MPMC-GEN  sample             227.840          us/op
+DeleteMinLatencyBench.ratio_4_4:p0.9999                  MPMC-GEN  sample             275.968          us/op
+DeleteMinLatencyBench.ratio_4_4:p1.00                    MPMC-GEN  sample           20250.624          us/op
+DeleteMinLatencyBench.ratio_4_4                        PADDED-GEN  sample  5093995      0.888 ± 0.043  us/op
+DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4          PADDED-GEN  sample  2301297      1.886 ± 0.092  us/op
+DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.00    PADDED-GEN  sample                 ≈ 0          us/op
+DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.50    PADDED-GEN  sample               0.100          us/op
+DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.90    PADDED-GEN  sample               0.200          us/op
+DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.95    PADDED-GEN  sample               2.000          us/op
+DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.99    PADDED-GEN  sample               2.200          us/op
+DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.999   PADDED-GEN  sample             238.080          us/op
+DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.9999  PADDED-GEN  sample             342.907          us/op
+DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p1.00    PADDED-GEN  sample           19791.872          us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4             PADDED-GEN  sample  2792698      0.067 ± 0.017  us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.00       PADDED-GEN  sample                 ≈ 0          us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.50       PADDED-GEN  sample                 ≈ 0          us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.90       PADDED-GEN  sample               0.100          us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.95       PADDED-GEN  sample               0.100          us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.99       PADDED-GEN  sample               0.400          us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.999      PADDED-GEN  sample               1.600          us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.9999     PADDED-GEN  sample              14.192          us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4:p1.00       PADDED-GEN  sample           13565.952          us/op
+DeleteMinLatencyBench.ratio_4_4:p0.00                  PADDED-GEN  sample                 ≈ 0          us/op
+DeleteMinLatencyBench.ratio_4_4:p0.50                  PADDED-GEN  sample                 ≈ 0          us/op
+DeleteMinLatencyBench.ratio_4_4:p0.90                  PADDED-GEN  sample               0.100          us/op
+DeleteMinLatencyBench.ratio_4_4:p0.95                  PADDED-GEN  sample               0.200          us/op
+DeleteMinLatencyBench.ratio_4_4:p0.99                  PADDED-GEN  sample               2.100          us/op
+DeleteMinLatencyBench.ratio_4_4:p0.999                 PADDED-GEN  sample             226.304          us/op
+DeleteMinLatencyBench.ratio_4_4:p0.9999                PADDED-GEN  sample             256.768          us/op
+DeleteMinLatencyBench.ratio_4_4:p1.00                  PADDED-GEN  sample           19791.872          us/op
+DeleteMinLatencyBench.ratio_6_2                          MPMC-GEN  sample  4543958      0.444 ± 0.025  us/op
+DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2            MPMC-GEN  sample  1026636      1.690 ± 0.079  us/op
+DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.00      MPMC-GEN  sample                 ≈ 0          us/op
+DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.50      MPMC-GEN  sample               0.100          us/op
+DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.90      MPMC-GEN  sample               0.400          us/op
+DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.95      MPMC-GEN  sample               0.700          us/op
+DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.99      MPMC-GEN  sample               1.600          us/op
+DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.999     MPMC-GEN  sample             252.672          us/op
+DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.9999    MPMC-GEN  sample             498.040          us/op
+DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p1.00      MPMC-GEN  sample            5996.544          us/op
+DeleteMinLatencyBench.ratio_6_2:insert_6_2               MPMC-GEN  sample  3517322      0.080 ± 0.023  us/op
+DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.00         MPMC-GEN  sample                 ≈ 0          us/op
+DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.50         MPMC-GEN  sample                 ≈ 0          us/op
+DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.90         MPMC-GEN  sample               0.100          us/op
+DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.95         MPMC-GEN  sample               0.100          us/op
+DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.99         MPMC-GEN  sample               0.500          us/op
+DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.999        MPMC-GEN  sample               3.400          us/op
+DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.9999       MPMC-GEN  sample              15.118          us/op
+DeleteMinLatencyBench.ratio_6_2:insert_6_2:p1.00         MPMC-GEN  sample           19791.872          us/op
+DeleteMinLatencyBench.ratio_6_2:p0.00                    MPMC-GEN  sample                 ≈ 0          us/op
+DeleteMinLatencyBench.ratio_6_2:p0.50                    MPMC-GEN  sample               0.100          us/op
+DeleteMinLatencyBench.ratio_6_2:p0.90                    MPMC-GEN  sample               0.100          us/op
+DeleteMinLatencyBench.ratio_6_2:p0.95                    MPMC-GEN  sample               0.300          us/op
+DeleteMinLatencyBench.ratio_6_2:p0.99                    MPMC-GEN  sample               1.000          us/op
+DeleteMinLatencyBench.ratio_6_2:p0.999                   MPMC-GEN  sample             223.744          us/op
+DeleteMinLatencyBench.ratio_6_2:p0.9999                  MPMC-GEN  sample             262.144          us/op
+DeleteMinLatencyBench.ratio_6_2:p1.00                    MPMC-GEN  sample           19791.872          us/op
+DeleteMinLatencyBench.ratio_6_2                        PADDED-GEN  sample  5168325      0.349 ± 0.017  us/op
+DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2          PADDED-GEN  sample  1146238      1.340 ± 0.064  us/op
+DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.00    PADDED-GEN  sample                 ≈ 0          us/op
+DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.50    PADDED-GEN  sample               0.100          us/op
+DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.90    PADDED-GEN  sample               0.200          us/op
+DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.95    PADDED-GEN  sample               0.200          us/op
+DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.99    PADDED-GEN  sample               2.100          us/op
+DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.999   PADDED-GEN  sample             246.784          us/op
+DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.9999  PADDED-GEN  sample             324.674          us/op
+DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p1.00    PADDED-GEN  sample            6258.688          us/op
+DeleteMinLatencyBench.ratio_6_2:insert_6_2             PADDED-GEN  sample  4022087      0.066 ± 0.012  us/op
+DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.00       PADDED-GEN  sample                 ≈ 0          us/op
+DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.50       PADDED-GEN  sample                 ≈ 0          us/op
+DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.90       PADDED-GEN  sample               0.100          us/op
+DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.95       PADDED-GEN  sample               0.100          us/op
+DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.99       PADDED-GEN  sample               0.400          us/op
+DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.999      PADDED-GEN  sample               3.800          us/op
+DeleteMinLatencyBench.ratio_6_2:insert_6_2:p0.9999     PADDED-GEN  sample              14.192          us/op
+DeleteMinLatencyBench.ratio_6_2:insert_6_2:p1.00       PADDED-GEN  sample           13139.968          us/op
+DeleteMinLatencyBench.ratio_6_2:p0.00                  PADDED-GEN  sample                 ≈ 0          us/op
+DeleteMinLatencyBench.ratio_6_2:p0.50                  PADDED-GEN  sample                 ≈ 0          us/op
+DeleteMinLatencyBench.ratio_6_2:p0.90                  PADDED-GEN  sample               0.100          us/op
+DeleteMinLatencyBench.ratio_6_2:p0.95                  PADDED-GEN  sample               0.100          us/op
+DeleteMinLatencyBench.ratio_6_2:p0.99                  PADDED-GEN  sample               1.400          us/op
+DeleteMinLatencyBench.ratio_6_2:p0.999                 PADDED-GEN  sample             174.848          us/op
+DeleteMinLatencyBench.ratio_6_2:p0.9999                PADDED-GEN  sample             255.531          us/op
+DeleteMinLatencyBench.ratio_6_2:p1.00                  PADDED-GEN  sample           13139.968          us/op
 * */
 
 
 /*
-* Benchmark                                              (type)    Mode      Cnt      Score   Error  Units
-DeleteMinLatencyBench.ratio_4_4                          LBPQ  sample  4428417      5.297 ± 0.105  us/op
-DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4            LBPQ  sample  2487230      0.939 ± 0.118  us/op
+Benchmark                                              (type)    Mode      Cnt      Score   Error  Units
+DeleteMinLatencyBench.ratio_4_4                          LBPQ  sample  4143074      8.819 ± 0.170  us/op
+DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4            LBPQ  sample  2342160      1.432 ± 0.207  us/op
 DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.00      LBPQ  sample                 ≈ 0          us/op
 DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.50      LBPQ  sample                 ≈ 0          us/op
 DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.90      LBPQ  sample               0.100          us/op
 DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.95      LBPQ  sample               0.100          us/op
-DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.99      LBPQ  sample               1.300          us/op
-DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.999     LBPQ  sample             147.968          us/op
-DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.9999    LBPQ  sample             700.243          us/op
-DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p1.00      LBPQ  sample           28901.376          us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4               LBPQ  sample  1941187     10.882 ± 0.186  us/op
+DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.99      LBPQ  sample               4.800          us/op
+DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.999     LBPQ  sample             218.071          us/op
+DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.9999    LBPQ  sample            1001.029          us/op
+DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p1.00      LBPQ  sample           39518.208          us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4               LBPQ  sample  1800914     18.426 ± 0.283  us/op
 DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.00         LBPQ  sample                 ≈ 0          us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.50         LBPQ  sample               0.300          us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.90         LBPQ  sample               0.800          us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.95         LBPQ  sample               1.400          us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.99         LBPQ  sample             295.936          us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.999        LBPQ  sample             401.312          us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.9999       LBPQ  sample            1427.213          us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4:p1.00         LBPQ  sample           22282.240          us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.50         LBPQ  sample               0.400          us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.90         LBPQ  sample               1.100          us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.95         LBPQ  sample             211.456          us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.99         LBPQ  sample             304.640          us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.999        LBPQ  sample             427.520          us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.9999       LBPQ  sample            1623.877          us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4:p1.00         LBPQ  sample           54329.344          us/op
 DeleteMinLatencyBench.ratio_4_4:p0.00                    LBPQ  sample                 ≈ 0          us/op
 DeleteMinLatencyBench.ratio_4_4:p0.50                    LBPQ  sample               0.100          us/op
-DeleteMinLatencyBench.ratio_4_4:p0.90                    LBPQ  sample               0.500          us/op
-DeleteMinLatencyBench.ratio_4_4:p0.95                    LBPQ  sample               0.800          us/op
-DeleteMinLatencyBench.ratio_4_4:p0.99                    LBPQ  sample             243.968          us/op
-DeleteMinLatencyBench.ratio_4_4:p0.999                   LBPQ  sample             357.888          us/op
-DeleteMinLatencyBench.ratio_4_4:p0.9999                  LBPQ  sample             967.680          us/op
-DeleteMinLatencyBench.ratio_4_4:p1.00                    LBPQ  sample           28901.376          us/op
-DeleteMinLatencyBench.ratio_4_4                           OBQ  sample  7632357      3.443 ± 0.061  us/op
-DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4             OBQ  sample  3942762      3.288 ± 0.090  us/op
+DeleteMinLatencyBench.ratio_4_4:p0.90                    LBPQ  sample               0.700          us/op
+DeleteMinLatencyBench.ratio_4_4:p0.95                    LBPQ  sample               1.100          us/op
+DeleteMinLatencyBench.ratio_4_4:p0.99                    LBPQ  sample             265.216          us/op
+DeleteMinLatencyBench.ratio_4_4:p0.999                   LBPQ  sample             364.544          us/op
+DeleteMinLatencyBench.ratio_4_4:p0.9999                  LBPQ  sample            1279.370          us/op
+DeleteMinLatencyBench.ratio_4_4:p1.00                    LBPQ  sample           54329.344          us/op
+DeleteMinLatencyBench.ratio_4_4                          LOCK  sample  5042318      2.538 ± 0.031  us/op
+DeleteMinLatencyBench.ratio_4_4                           OBQ  sample  5057047      3.478 ± 0.064  us/op
+DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4             OBQ  sample  2626930      3.316 ± 0.094  us/op
 DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.00       OBQ  sample                 ≈ 0          us/op
 DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.50       OBQ  sample               0.200          us/op
 DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.90       OBQ  sample               0.300          us/op
-DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.95       OBQ  sample               0.500          us/op
-DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.99       OBQ  sample              73.600          us/op
-DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.999      OBQ  sample             526.336          us/op
-DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.9999     OBQ  sample            2066.432          us/op
-DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p1.00       OBQ  sample           11550.720          us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4                OBQ  sample  3689595      3.610 ± 0.083  us/op
+DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.95       OBQ  sample               0.600          us/op
+DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.99       OBQ  sample              87.128          us/op
+DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.999      OBQ  sample             523.776          us/op
+DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p0.9999     OBQ  sample            1710.080          us/op
+DeleteMinLatencyBench.ratio_4_4:deleteMin_4_4:p1.00       OBQ  sample            9617.408          us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4                OBQ  sample  2430117      3.653 ± 0.086  us/op
 DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.00          OBQ  sample                 ≈ 0          us/op
 DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.50          OBQ  sample               0.200          us/op
 DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.90          OBQ  sample               0.600          us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.95          OBQ  sample               0.900          us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.99          OBQ  sample             100.224          us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.999         OBQ  sample             508.928          us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.9999        OBQ  sample            1902.675          us/op
-DeleteMinLatencyBench.ratio_4_4:insert_4_4:p1.00          OBQ  sample           12189.696          us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.95          OBQ  sample               1.000          us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.99          OBQ  sample             113.408          us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.999         OBQ  sample             472.064          us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4:p0.9999        OBQ  sample            1417.192          us/op
+DeleteMinLatencyBench.ratio_4_4:insert_4_4:p1.00          OBQ  sample            9519.104          us/op
 DeleteMinLatencyBench.ratio_4_4:p0.00                     OBQ  sample                 ≈ 0          us/op
 DeleteMinLatencyBench.ratio_4_4:p0.50                     OBQ  sample               0.200          us/op
 DeleteMinLatencyBench.ratio_4_4:p0.90                     OBQ  sample               0.400          us/op
 DeleteMinLatencyBench.ratio_4_4:p0.95                     OBQ  sample               0.800          us/op
-DeleteMinLatencyBench.ratio_4_4:p0.99                     OBQ  sample              89.600          us/op
-DeleteMinLatencyBench.ratio_4_4:p0.999                    OBQ  sample             519.168          us/op
-DeleteMinLatencyBench.ratio_4_4:p0.9999                   OBQ  sample            2007.040          us/op
-DeleteMinLatencyBench.ratio_4_4:p1.00                     OBQ  sample           12189.696          us/op
+DeleteMinLatencyBench.ratio_4_4:p0.99                     OBQ  sample             102.784          us/op
+DeleteMinLatencyBench.ratio_4_4:p0.999                    OBQ  sample             498.176          us/op
+DeleteMinLatencyBench.ratio_4_4:p0.9999                   OBQ  sample            1572.864          us/op
+DeleteMinLatencyBench.ratio_4_4:p1.00                     OBQ  sample            9617.408          us/op
 DeleteMinLatencyBench.ratio_6_2                          LBPQ  sample  3620464     14.912 ± 0.165  us/op
 DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2            LBPQ  sample   967557      1.211 ± 0.252  us/op
 DeleteMinLatencyBench.ratio_6_2:deleteMin_6_2:p0.00      LBPQ  sample                 ≈ 0          us/op

@@ -46,6 +46,8 @@ public class LBBoundedPQ<T> implements PriorityQueue<T> {
         };
     }
 
+
+
     @Override
     public boolean add(T t) {
         var ia = insertArray;
@@ -70,7 +72,7 @@ public class LBBoundedPQ<T> implements PriorityQueue<T> {
                 int total = iIndex + (daSize - daIndex);
 
                 if (total >= capacity) return false;
-                else if (I_INDEX.compareAndSet(da, iIndex, next)) break; //linearization point an item has been inserted into the array
+                else if (da.casIIndex(iIndex, next)) break; //linearization point an item has been inserted into the array
                 else iIndex = da.loIIndex(); //re-read with acquire, write to array can't be reordered as the write is dependent on index
             }
 
@@ -79,7 +81,7 @@ public class LBBoundedPQ<T> implements PriorityQueue<T> {
             if (da.capacity == 0 || daStatus.state != DeleteArray.State.NONE) return true; //nothing in the D.A or da is freezing, we'll get merged soon
             var lastDaIndex = da.capacity - 1;
             int prio = compare(t, da.items[lastDaIndex]);
-            if (prio < 0) SLACK_COUNT.getAndAdd(da, 1); //Writes to items is made visible by da status read
+            if (prio < 0) da.incrementSlack(); //Writes to items is made visible by da status read
             return true;
         }finally {
             lock.unlock();
@@ -196,7 +198,7 @@ public class LBBoundedPQ<T> implements PriorityQueue<T> {
             //Writes to this array
             //For inserts backed by exclusive lock, otherwise for deletes and inserts, backed by set release
             //However, they can't modify this as it is prevented by the merging flag
-            D_ARR.setRelease(this, newDa);
+            soDArr(newDa);
             da.status = new Status(iIndex, MERGED);
             return item;
         }finally {
@@ -204,6 +206,9 @@ public class LBBoundedPQ<T> implements PriorityQueue<T> {
         }
     }
 
+    void soDArr(DeleteArray<T> newArr) {
+        D_ARR.setRelease(this, newArr);
+    }
 
     public List<T> drain() {
         var da = (DeleteArray<T>) D_ARR.getAcquire(this);
@@ -289,6 +294,14 @@ public class LBBoundedPQ<T> implements PriorityQueue<T> {
 
         int size() {
             return capacity - status.dIndex;
+        }
+
+        public boolean casIIndex(int old, int newIndex) {
+            return I_INDEX.compareAndSet(this, old, newIndex);
+        }
+
+        void incrementSlack() {
+            SLACK_COUNT.getAndAdd(this, 1);
         }
 
         boolean casStatus(Status s, Status newS) {

@@ -6,14 +6,17 @@ import io.github.kusoroadeolu.cleap.dualarray.OrderedBoundedPQ;
 import io.github.kusoroadeolu.cleap.experimental.LockedPQ;
 import io.github.kusoroadeolu.cleap.latest.MpmcGenerationPQ;
 import io.github.kusoroadeolu.cleap.latest.PaddedArenaGenerationPQ;
+import io.github.kusoroadeolu.jmhpretty.JmhPrettyPrinter;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
+import org.openjdk.jmh.results.format.ResultFormatType;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Gatherers;
 
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
@@ -26,7 +29,7 @@ public class DeleteMinThrptBench {
     private PriorityQueue<Integer> queue;
 
 
-    @Param({"LBPQ", "MPMC_EPO", "PADDED_EPO", "LOCK", "OBQ"})
+    @Param({"LBPQ", "OBQ", "LOCK"})
     private String type;
 
     @Setup
@@ -35,8 +38,8 @@ public class DeleteMinThrptBench {
         queue = switch (type) {
             case "LBPQ" -> new LBBoundedPQ<>(cap);
             case "OBQ" -> new OrderedBoundedPQ<>(cap);
-            case "MPMC_EPO" -> new MpmcGenerationPQ<>(cap);
-            case "PADDED_EPO" -> new PaddedArenaGenerationPQ<>(cap);
+            case "MPMC-GEN" -> new MpmcGenerationPQ<>(cap);
+            case "PADDED-GEN" -> new PaddedArenaGenerationPQ<>(cap);
             case "LOCK" -> new LockedPQ<>(cap);
             default -> throw new RuntimeException();
         };
@@ -115,8 +118,11 @@ public class DeleteMinThrptBench {
         static void main() throws RunnerException {
             Options options = new OptionsBuilder()
                     .include(DeleteMinThrptBench.class.getSimpleName())
+                    .result("results.json")
+                    .resultFormat(ResultFormatType.JSON)
                     .build();
             new org.openjdk.jmh.runner.Runner(options).run();
+            JmhPrettyPrinter.builder().build().print("C:\\Users\\eastw\\Git Projects\\Personal\\cleap\\cleap-jmh\\target\\results.json");
         }
     }
 }
@@ -136,20 +142,20 @@ DeleteMinThrptBench.ratio_4_4:readerEmpty         OBQ  thrpt   30   0.605 ± 0.1
 DeleteMinThrptBench.ratio_4_4:readerSucceeded     OBQ  thrpt   30   4.908 ± 0.063  ops/us
 DeleteMinThrptBench.ratio_4_4:writerRejected      OBQ  thrpt   30   0.001 ± 0.003  ops/us
 DeleteMinThrptBench.ratio_4_4:writerSucceeded     OBQ  thrpt   30   4.907 ± 0.063  ops/us
-DeleteMinThrptBench.ratio_4_4                    MPMC_EPO  thrpt   20  202.122 ±  4.252  ops/us
-DeleteMinThrptBench.ratio_4_4:deleteMin_4_4      MPMC_EPO  thrpt   20    3.262 ±  0.083  ops/us
-DeleteMinThrptBench.ratio_4_4:insert_4_4         MPMC_EPO  thrpt   20  198.860 ±  4.215  ops/us
-DeleteMinThrptBench.ratio_4_4:readerEmpty        MPMC_EPO  thrpt   20      ≈ 0           ops/us
-DeleteMinThrptBench.ratio_4_4:readerSucceeded    MPMC_EPO  thrpt   20    3.274 ±  0.080  ops/us
-DeleteMinThrptBench.ratio_4_4:writerRejected     MPMC_EPO  thrpt   20  196.023 ±  4.161  ops/us
-DeleteMinThrptBench.ratio_4_4:writerSucceeded    MPMC_EPO  thrpt   20    3.272 ±  0.079  ops/us
-DeleteMinThrptBench.ratio_4_4                  PADDED_EPO  thrpt   20  204.718 ±  6.054  ops/us
-DeleteMinThrptBench.ratio_4_4:deleteMin_4_4    PADDED_EPO  thrpt   20    4.308 ±  0.221  ops/us
-DeleteMinThrptBench.ratio_4_4:insert_4_4       PADDED_EPO  thrpt   20  200.410 ±  6.235  ops/us
-DeleteMinThrptBench.ratio_4_4:readerEmpty      PADDED_EPO  thrpt   20      ≈ 0           ops/us
-DeleteMinThrptBench.ratio_4_4:readerSucceeded  PADDED_EPO  thrpt   20    4.321 ±  0.220  ops/us
-DeleteMinThrptBench.ratio_4_4:writerRejected   PADDED_EPO  thrpt   20  196.595 ±  6.517  ops/us
-DeleteMinThrptBench.ratio_4_4:writerSucceeded  PADDED_EPO  thrpt   20    4.321 ±  0.219  ops/us
+DeleteMinThrptBench.ratio_4_4                    MPMC-GEN  thrpt   20  202.122 ±  4.252  ops/us
+DeleteMinThrptBench.ratio_4_4:deleteMin_4_4      MPMC-GEN  thrpt   20    3.262 ±  0.083  ops/us
+DeleteMinThrptBench.ratio_4_4:insert_4_4         MPMC-GEN  thrpt   20  198.860 ±  4.215  ops/us
+DeleteMinThrptBench.ratio_4_4:readerEmpty        MPMC-GEN  thrpt   20      ≈ 0           ops/us
+DeleteMinThrptBench.ratio_4_4:readerSucceeded    MPMC-GEN  thrpt   20    3.274 ±  0.080  ops/us
+DeleteMinThrptBench.ratio_4_4:writerRejected     MPMC-GEN  thrpt   20  196.023 ±  4.161  ops/us
+DeleteMinThrptBench.ratio_4_4:writerSucceeded    MPMC-GEN  thrpt   20    3.272 ±  0.079  ops/us
+DeleteMinThrptBench.ratio_4_4                  PADDED-GEN  thrpt   20  204.718 ±  6.054  ops/us
+DeleteMinThrptBench.ratio_4_4:deleteMin_4_4    PADDED-GEN  thrpt   20    4.308 ±  0.221  ops/us
+DeleteMinThrptBench.ratio_4_4:insert_4_4       PADDED-GEN  thrpt   20  200.410 ±  6.235  ops/us
+DeleteMinThrptBench.ratio_4_4:readerEmpty      PADDED-GEN  thrpt   20      ≈ 0           ops/us
+DeleteMinThrptBench.ratio_4_4:readerSucceeded  PADDED-GEN  thrpt   20    4.321 ±  0.220  ops/us
+DeleteMinThrptBench.ratio_4_4:writerRejected   PADDED-GEN  thrpt   20  196.595 ±  6.517  ops/us
+DeleteMinThrptBench.ratio_4_4:writerSucceeded  PADDED-GEN  thrpt   20    4.321 ±  0.219  ops/us
 DeleteMinThrptBench.ratio_4_4                        LOCK  thrpt   20   10.589 ±  1.766  ops/us
 DeleteMinThrptBench.ratio_4_4:deleteMin_4_4          LOCK  thrpt   20    5.611 ±  1.267  ops/us
 DeleteMinThrptBench.ratio_4_4:insert_4_4             LOCK  thrpt   20    4.978 ±  0.548  ops/us
@@ -171,20 +177,20 @@ DeleteMinThrptBench.ratio_6_2:readerEmpty         OBQ  thrpt   30   0.391 ± 0.0
 DeleteMinThrptBench.ratio_6_2:readerSucceeded     OBQ  thrpt   30   4.973 ± 0.104  ops/us
 DeleteMinThrptBench.ratio_6_2:writerRejected      OBQ  thrpt   30     ≈ 0          ops/us
 DeleteMinThrptBench.ratio_6_2:writerSucceeded     OBQ  thrpt   30   4.973 ± 0.104  ops/us
-DeleteMinThrptBench.ratio_6_2                    MPMC_EPO  thrpt   20  236.137 ±  9.092  ops/us
-DeleteMinThrptBench.ratio_6_2:deleteMin_6_2      MPMC_EPO  thrpt   20    3.514 ±  0.238  ops/us
-DeleteMinThrptBench.ratio_6_2:insert_6_2         MPMC_EPO  thrpt   20  232.623 ±  9.214  ops/us
-DeleteMinThrptBench.ratio_6_2:readerEmpty        MPMC_EPO  thrpt   20    0.041 ±  0.148  ops/us
-DeleteMinThrptBench.ratio_6_2:readerSucceeded    MPMC_EPO  thrpt   20    3.500 ±  0.173  ops/us
-DeleteMinThrptBench.ratio_6_2:writerRejected     MPMC_EPO  thrpt   20  230.467 ±  8.923  ops/us
-DeleteMinThrptBench.ratio_6_2:writerSucceeded    MPMC_EPO  thrpt   20    3.498 ±  0.175  ops/us
-DeleteMinThrptBench.ratio_6_2                  PADDED_EPO  thrpt   20  341.970 ± 13.155  ops/us
-DeleteMinThrptBench.ratio_6_2:deleteMin_6_2    PADDED_EPO  thrpt   20    3.153 ±  0.158  ops/us
-DeleteMinThrptBench.ratio_6_2:insert_6_2       PADDED_EPO  thrpt   20  338.817 ± 13.295  ops/us
-DeleteMinThrptBench.ratio_6_2:readerEmpty      PADDED_EPO  thrpt   20      ≈ 0           ops/us
-DeleteMinThrptBench.ratio_6_2:readerSucceeded  PADDED_EPO  thrpt   20    3.170 ±  0.164  ops/us
-DeleteMinThrptBench.ratio_6_2:writerRejected   PADDED_EPO  thrpt   20  336.669 ± 13.339  ops/us
-DeleteMinThrptBench.ratio_6_2:writerSucceeded  PADDED_EPO  thrpt   20    3.170 ±  0.163  ops/us
+DeleteMinThrptBench.ratio_6_2                    MPMC-GEN  thrpt   20  236.137 ±  9.092  ops/us
+DeleteMinThrptBench.ratio_6_2:deleteMin_6_2      MPMC-GEN  thrpt   20    3.514 ±  0.238  ops/us
+DeleteMinThrptBench.ratio_6_2:insert_6_2         MPMC-GEN  thrpt   20  232.623 ±  9.214  ops/us
+DeleteMinThrptBench.ratio_6_2:readerEmpty        MPMC-GEN  thrpt   20    0.041 ±  0.148  ops/us
+DeleteMinThrptBench.ratio_6_2:readerSucceeded    MPMC-GEN  thrpt   20    3.500 ±  0.173  ops/us
+DeleteMinThrptBench.ratio_6_2:writerRejected     MPMC-GEN  thrpt   20  230.467 ±  8.923  ops/us
+DeleteMinThrptBench.ratio_6_2:writerSucceeded    MPMC-GEN  thrpt   20    3.498 ±  0.175  ops/us
+DeleteMinThrptBench.ratio_6_2                  PADDED-GEN  thrpt   20  341.970 ± 13.155  ops/us
+DeleteMinThrptBench.ratio_6_2:deleteMin_6_2    PADDED-GEN  thrpt   20    3.153 ±  0.158  ops/us
+DeleteMinThrptBench.ratio_6_2:insert_6_2       PADDED-GEN  thrpt   20  338.817 ± 13.295  ops/us
+DeleteMinThrptBench.ratio_6_2:readerEmpty      PADDED-GEN  thrpt   20      ≈ 0           ops/us
+DeleteMinThrptBench.ratio_6_2:readerSucceeded  PADDED-GEN  thrpt   20    3.170 ±  0.164  ops/us
+DeleteMinThrptBench.ratio_6_2:writerRejected   PADDED-GEN  thrpt   20  336.669 ± 13.339  ops/us
+DeleteMinThrptBench.ratio_6_2:writerSucceeded  PADDED-GEN  thrpt   20    3.170 ±  0.163  ops/us
 DeleteMinThrptBench.ratio_6_2                        LOCK  thrpt   20   14.214 ±  1.457  ops/us
 DeleteMinThrptBench.ratio_6_2:deleteMin_6_2          LOCK  thrpt   20    2.290 ±  0.345  ops/us
 DeleteMinThrptBench.ratio_6_2:insert_6_2             LOCK  thrpt   20   11.924 ±  1.629  ops/us

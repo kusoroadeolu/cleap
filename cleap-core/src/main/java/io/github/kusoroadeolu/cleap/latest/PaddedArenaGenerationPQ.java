@@ -333,7 +333,7 @@ public class PaddedArenaGenerationPQ<E> extends SharedConsumerFieldsRPad<E> impl
             }
 
 
-            if (casProducerIndex(pIndex, pIndex + 1)) break;
+            if (casProducerIndex(pIndex, pIndex + 1)) break; //linearization point
         }
 
         int offset = offset(pIndex, mask);
@@ -430,7 +430,7 @@ public class PaddedArenaGenerationPQ<E> extends SharedConsumerFieldsRPad<E> impl
         var offset = offset(cIndex, mask);
         elem = lpElem(buffer, offset);
         spElem(buffer, offset, null);
-        soConsumerIndex(cIndex + 1);
+        soConsumerIndex(cIndex + 1); //linearization point for a poll
         return elem;
     }
 

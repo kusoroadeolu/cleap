@@ -114,7 +114,7 @@ public class GenerationPQ<E> extends GenerationSharedConsumerFieldsRPad<E> imple
             }
 
 
-            if (casProducerIndex(pIndex, pIndex + 1)) break;
+            if (casProducerIndex(pIndex, pIndex + 1)) break; //linearization point
         }
 
         int offset = offset(pIndex, mask);

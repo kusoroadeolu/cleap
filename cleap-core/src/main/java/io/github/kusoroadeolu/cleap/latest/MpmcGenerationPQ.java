@@ -268,7 +268,7 @@ public class MpmcGenerationPQ<E> extends StatusFieldRPad<E> implements PriorityQ
                 else seq = pIndex + 1;
             }
 
-        } while (seq > pIndex || !casProducerIndex(pIndex, pIndex + 1));
+        } while (seq > pIndex || !casProducerIndex(pIndex, pIndex + 1)); //linearization point
 
         spElem(buffer, Utils.offset(pIndex, mask), e);
         soSequence(sequence, offset, pIndex + 1);
@@ -320,7 +320,8 @@ public class MpmcGenerationPQ<E> extends StatusFieldRPad<E> implements PriorityQ
             }
 
 
-            if (seq == expected && casConsumerIndex(cIndex, cIndex + 1)) break;
+            if (seq == expected && casConsumerIndex(cIndex, cIndex + 1)) break; //linearization point
+            //Don't use a do while loop here lol
         }
 
         int elemOffset = Utils.offset(cIndex, mask);

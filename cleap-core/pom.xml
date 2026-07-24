@@ -18,11 +18,6 @@
             <version>3.5</version>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>io.github.kusoroadeolu</groupId>
-            <artifactId>veneer</artifactId>
-            <version>1.3.2</version>
-        </dependency>
 
 
     </dependencies>
