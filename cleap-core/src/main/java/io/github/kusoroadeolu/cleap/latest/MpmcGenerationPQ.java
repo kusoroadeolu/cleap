@@ -6,7 +6,8 @@ import io.github.kusoroadeolu.cleap.PriorityQueue;
 import java.lang.invoke.VarHandle;
 import java.util.Arrays;
 
-import static io.github.kusoroadeolu.cleap.latest.Utils.*;
+import static io.github.kusoroadeolu.cleap.latest.Utils.fieldOffset;
+import static io.github.kusoroadeolu.cleap.latest.Utils.offset;
 
 
 class SequencedArrayRPad<E> extends SequencedArray<E> {

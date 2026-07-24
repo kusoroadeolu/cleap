@@ -14,8 +14,6 @@ import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
-import java.awt.*;
-import java.awt.geom.AffineTransform;
 import java.nio.file.Path;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
@@ -50,20 +48,20 @@ public class DeleteMinLatencyBench {
             queue.add(ThreadLocalRandom.current().nextInt(1_000_000));
         }
     }
-//
-//    @Group("ratio_6_2")
-//    @GroupThreads(6)
-//    @Benchmark
-//    public void insert_6_2(Blackhole bh) {
-//        bh.consume(queue.add(ThreadLocalRandom.current().nextInt(1_000_000)));
-//    }
-//
-//    @Group("ratio_6_2")
-//    @GroupThreads(2)
-//    @Benchmark
-//    public void deleteMin_6_2(Blackhole bh) {
-//        bh.consume(queue.poll());
-//    }
+
+    @Group("ratio_6_2")
+    @GroupThreads(6)
+    @Benchmark
+    public void insert_6_2(Blackhole bh) {
+        bh.consume(queue.add(ThreadLocalRandom.current().nextInt(1_000_000)));
+    }
+
+    @Group("ratio_6_2")
+    @GroupThreads(2)
+    @Benchmark
+    public void deleteMin_6_2(Blackhole bh) {
+        bh.consume(queue.poll());
+    }
 
     @Group("ratio_4_4")
     @GroupThreads(4)

@@ -16,7 +16,7 @@ import java.util.concurrent.TimeUnit;
 @State(Scope.Benchmark)
 @Warmup(iterations = 10, time = 1)
 @Measurement(iterations = 10, time = 1)
-@Fork(2)
+@Fork(3)
 public class SegmentLimitBench {
     private PriorityQueue<Integer> queue;
 
