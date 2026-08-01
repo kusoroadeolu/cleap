@@ -93,3 +93,6 @@ Finally, as always
 1. An insert of an element to any of these priority queues `happens before` a subsequent delete of that element
 2. The exhaustion or bounding of a generation `happens before` the occurrence of a new generation
 3. A segment sort of the elements in a generation's range `happens before` the deletion of any elements in that range
+
+Tbh, this is just me trying to wrap my head around what I've built and explain what I built. A seperate idea I'm thinking about is a bounded PIPQ
+I believe that's possible using producer and consumer index counters. I probably need to go into greater detail about segment sorts
