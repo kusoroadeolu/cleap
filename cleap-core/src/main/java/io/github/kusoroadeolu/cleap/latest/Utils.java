@@ -7,7 +7,6 @@ public final class Utils {
     public static final int MAX_POW2 = 1 << 30;
     public static final double SEGMENT_RATIO = 0.25;
     public static final long MAX_SEGMENT_CAP = 1024;
-    public static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
     public static final int NCPU = Runtime.getRuntime().availableProcessors();
 
 
@@ -30,7 +29,7 @@ public final class Utils {
 
     public static VarHandle fieldOffset(Class<?> host, String fieldName, Class<?> type) {
         try {
-           return LOOKUP.findVarHandle(host, fieldName, type);
+           return MethodHandles.lookup().findVarHandle(host, fieldName, type);
         }catch (Exception e) {
             throw new RuntimeException(e);
         }

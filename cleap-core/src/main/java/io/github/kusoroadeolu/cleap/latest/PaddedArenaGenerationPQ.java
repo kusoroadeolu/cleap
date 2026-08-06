@@ -251,6 +251,15 @@ class SharedConsumerFields<E> extends SegmentLimitRPad<E> {
         }
     }
 
+    public SharedConsumerFields(int capacity, int concurrency) {
+        super(capacity);
+        int size = concurrency < 1 ? arenaSize() : concurrency;
+        arena = new ArenaObject[size];
+        for (int i = 0; i < size; ++i) {
+            arena[i] = new ArenaObject();
+        }
+    }
+
 
 
     public boolean acquire() {
@@ -295,6 +304,10 @@ class SharedConsumerFieldsRPad<E> extends SharedConsumerFields<E> {
     public SharedConsumerFieldsRPad(int capacity, long segmentLimit) {
         super(capacity, segmentLimit);
     }
+
+    public SharedConsumerFieldsRPad(int capacity, int concurrency) {
+        super(capacity, concurrency);
+    }
 }
 
 
@@ -307,6 +320,10 @@ public class PaddedArenaGenerationPQ<E> extends SharedConsumerFieldsRPad<E> impl
 
     public PaddedArenaGenerationPQ(int capacity, long segmentLimit) {
         super(capacity, segmentLimit);
+    }
+
+    public PaddedArenaGenerationPQ(int capacity, int concurrency) {
+        super(capacity, concurrency);
     }
 
     public boolean offer(final E e) {
