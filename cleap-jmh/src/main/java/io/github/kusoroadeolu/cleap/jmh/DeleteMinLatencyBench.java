@@ -9,6 +9,7 @@ import io.github.kusoroadeolu.cleap.latest.PaddedArenaGenerationPQ;
 import io.github.kusoroadeolu.jmhpretty.JmhPrettyPrinter;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
+import org.openjdk.jmh.profile.JavaFlightRecorderProfiler;
 import org.openjdk.jmh.results.format.ResultFormatType;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
@@ -28,7 +29,7 @@ public class DeleteMinLatencyBench {
 
     private PriorityQueue<Integer> queue;
 
-    @Param({"LBPQ", "LOCK", "OBQ"})
+    @Param({"MPMC-GEN", "PADDED-GEN", "LBPQ", "OBQ", "LOCK"})
     private String type;
 
     @Setup
@@ -47,20 +48,6 @@ public class DeleteMinLatencyBench {
         for (int i = 0; i < to; ++i) {
             queue.add(ThreadLocalRandom.current().nextInt(1_000_000));
         }
-    }
-
-    @Group("ratio_6_2")
-    @GroupThreads(6)
-    @Benchmark
-    public void insert_6_2(Blackhole bh) {
-        bh.consume(queue.add(ThreadLocalRandom.current().nextInt(1_000_000)));
-    }
-
-    @Group("ratio_6_2")
-    @GroupThreads(2)
-    @Benchmark
-    public void deleteMin_6_2(Blackhole bh) {
-        bh.consume(queue.poll());
     }
 
     @Group("ratio_4_4")
@@ -83,9 +70,10 @@ public class DeleteMinLatencyBench {
                     .include(DeleteMinLatencyBench.class.getSimpleName())
                     .result("results.json")
                     .resultFormat(ResultFormatType.JSON)
+                    .addProfiler(JavaFlightRecorderProfiler.class, "dir=C:\\jfr-mpmc-pq")
                     .build();
             new org.openjdk.jmh.runner.Runner(options).run();
-            JmhPrettyPrinter.builder().build().print(Path.of(Path.of(".").toAbsolutePath().toString(), "target", "results.json").toString());
+           // JmhPrettyPrinter.builder().build().print(Path.of(Path.of(".").toAbsolutePath().toString(), "target", "results.json").toString());
 
         }
     }
