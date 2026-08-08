@@ -299,13 +299,14 @@ public class MpmcGenerationPQ<E> extends StatusFieldRPad<E> implements PriorityQ
 
             if (cIndex >= sortedIndex) { // '>' status is stale, == 'try merge' status
                 if (cIndex == (pIndex = lvProducerIndex())) return null;
+
                 if (s.lvState() == State.NONE && s.casState(State.NONE, State.SORTING)) {
                     long sIndex = segmentSort(cIndex, pIndex, mask, buffer, sequence);
                     Status newS = new Status(sIndex);
-                    soConsumerIndex(cIndex + 1);
                     soStatus(newS);
                     s.soState(State.SORTED);
-                    break;
+                    s = newS;
+                    continue; //dont increment c index here as it could drift from p index
                 } else while (s.loState() != State.SORTED){
                     Thread.onSpinWait();
                 }
